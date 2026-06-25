@@ -117,3 +117,27 @@ CREATE TABLE IF NOT EXISTS short_links (
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_short_link_id ON short_links(link_id);
+
+-- ---------- Link Hub: self-hosted short links (our own Bitly) ----------
+CREATE TABLE IF NOT EXISTS cb_short_links (
+  id          TEXT PRIMARY KEY,
+  slug        TEXT UNIQUE NOT NULL,           -- the back-half: /s/<slug>
+  long_url    TEXT NOT NULL,                  -- destination
+  title       TEXT,
+  created_by  TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_cb_short_slug ON cb_short_links(slug);
+
+-- ---------- Link Hub: click/scan events ----------
+CREATE TABLE IF NOT EXISTS cb_clicks (
+  id        BIGSERIAL PRIMARY KEY,
+  link_id   TEXT NOT NULL,
+  ts        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  source    TEXT,                             -- 'qr' when scanned via QR, else null/link
+  referrer  TEXT,
+  device    TEXT,                             -- mobile | desktop | tablet | bot
+  browser   TEXT,
+  country   TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_cb_clicks_link ON cb_clicks(link_id, ts DESC);

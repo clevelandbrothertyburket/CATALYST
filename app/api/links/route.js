@@ -65,3 +65,19 @@ export async function POST(req) {
   await audit({ actor: auth.user.name, action: 'link.created', entity: 'link', entityId: id, after: { code: c.code, url } });
   return Response.json({ id, url, code: c.code, campaign });
 }
+
+// Delete a previously created UTM link (approver/admin). Removes it from history.
+export async function DELETE(req) {
+  const auth = await requireUser('approver');
+  if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
+
+  const id = new URL(req.url).searchParams.get('id');
+  if (!id) return Response.json({ error: 'Link id is required' }, { status: 400 });
+
+  const rows = await sql`SELECT id, code, title, url FROM links WHERE id = ${id}`;
+  if (!rows.length) return Response.json({ error: 'Link not found' }, { status: 404 });
+
+  await sql`DELETE FROM links WHERE id = ${id}`;
+  await audit({ actor: auth.user.name, action: 'link.deleted', entity: 'link', entityId: id, before: rows[0] });
+  return Response.json({ ok: true });
+}

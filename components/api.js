@@ -28,6 +28,7 @@ export const api = {
 
   links: (params = '') => jsonFetch('/api/links' + params),
   createLink: (body) => jsonFetch('/api/links', { method: 'POST', body: JSON.stringify(body) }),
+  deleteLink: (id) => jsonFetch('/api/links?id=' + encodeURIComponent(id), { method: 'DELETE' }),
 
   taxonomy: () => jsonFetch('/api/taxonomy'),
   addTaxonomy: (body) => jsonFetch('/api/taxonomy', { method: 'POST', body: JSON.stringify(body) }),
@@ -38,4 +39,9 @@ export const api = {
   createShortLink: (body) => jsonFetch('/api/shortlinks', { method: 'POST', body: JSON.stringify(body) }),
   bitlyStatus: () => jsonFetch('/api/shortlinks/status'),
   shortLinkClicks: () => jsonFetch('/api/shortlinks/clicks'),
+
+  hub: () => jsonFetch('/api/hub'),
+  createHubLink: (body) => jsonFetch('/api/hub', { method: 'POST', body: JSON.stringify(body) }),
+  deleteHubLink: (id) => jsonFetch('/api/hub?id=' + encodeURIComponent(id), { method: 'DELETE' }),
+  hubStats: (id) => jsonFetch('/api/hub/stats?id=' + encodeURIComponent(id)),
 };

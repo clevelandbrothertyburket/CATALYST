@@ -597,6 +597,15 @@ function UtmLinks({ user, data, reload }) {
   const [tab, setTab] = useState('build'); const [q, setQ] = useState('');
   const [destFilter, setDestFilter] = useState('');
   const [abCount, setAbCount] = useState(0); // 0 = single link; 2/3 = A/B(/C) variants
+  const [confirmDel, setConfirmDel] = useState(null);
+  const [delBusy, setDelBusy] = useState(false);
+
+  async function removeLink() {
+    if (!confirmDel) return;
+    setDelBusy(true);
+    try { await api.deleteLink(confirmDel.id); toast('Link deleted'); setConfirmDel(null); reload(); }
+    catch (e) { toastErr(e.message); } finally { setDelBusy(false); }
+  }
 
   // Group approved codes by division/industry for the dropdown.
   const codesByBU = useMemo(() => {
@@ -736,7 +745,7 @@ function UtmLinks({ user, data, reload }) {
             <Chip ghost on={destFilter === '__other'} onClick={() => setDestFilter('__other')}>Other</Chip>
           </div>
           <div style={{ ...card, overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.7fr 0.7fr 1.2fr 0.6fr 78px', gap: 12, padding: '11px 18px', borderBottom: `1px solid ${C.line}`, background: C.ink3, fontSize: 10.5, letterSpacing: '.08em', textTransform: 'uppercase', color: C.fog2, fontWeight: 600 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.7fr 0.7fr 1.2fr 0.6fr 116px', gap: 12, padding: '11px 18px', borderBottom: `1px solid ${C.line}`, background: C.ink3, fontSize: 10.5, letterSpacing: '.08em', textTransform: 'uppercase', color: C.fog2, fontWeight: 600 }}>
               <span>Link</span><span>Medium</span><span>Destination</span><span>Created</span><span style={{ textAlign: 'right' }}>Actions</span>
             </div>
             {links.length === 0
@@ -745,7 +754,7 @@ function UtmLinks({ user, data, reload }) {
                 {links.map((l, i) => {
                   let host = ''; try { host = new URL(l.base_url || l.url).hostname; } catch {}
                   return (
-                    <div key={l.id} className="cb-fade" style={{ display: 'grid', gridTemplateColumns: '1.7fr 0.7fr 1.2fr 0.6fr 78px', gap: 12, alignItems: 'center', padding: '12px 18px', borderBottom: i < links.length - 1 ? `1px solid ${C.line}` : 'none', animationDelay: `${Math.min(i, 12) * 30}ms`, transition: 'background .15s' }}
+                    <div key={l.id} className="cb-fade" style={{ display: 'grid', gridTemplateColumns: '1.7fr 0.7fr 1.2fr 0.6fr 116px', gap: 12, alignItems: 'center', padding: '12px 18px', borderBottom: i < links.length - 1 ? `1px solid ${C.line}` : 'none', animationDelay: `${Math.min(i, 12) * 30}ms`, transition: 'background .15s' }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,.02)')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                       <div style={{ minWidth: 0 }}>
@@ -761,6 +770,8 @@ function UtmLinks({ user, data, reload }) {
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                         <button title="Open link" onClick={() => window.open(l.url, '_blank')} style={iconBtn}>↗</button>
                         <button title="Copy link" onClick={() => { navigator.clipboard?.writeText(l.url); toast('Copied'); }} style={iconBtn}>⧉</button>
+                        {can(user, 'approver') && <button title="Delete link" onClick={() => setConfirmDel(l)} style={{ ...iconBtn, color: '#FFB020' }}
+                          onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#FFB020')} onMouseLeave={(e) => (e.currentTarget.style.borderColor = C.line2)}>🗑</button>}
                       </div>
                     </div>
                   );
@@ -768,6 +779,21 @@ function UtmLinks({ user, data, reload }) {
               </div>}
           </div>
         </div>
+      )}
+      {confirmDel && (
+        <Modal title="Delete UTM link" sub="This removes it from the registry." onClose={() => setConfirmDel(null)} width={440}>
+          <p style={{ fontSize: 13.5, color: C.fog, lineHeight: 1.6, marginBottom: 14 }}>
+            Delete this tracked link? This only removes it from Catalyst's history — it doesn't affect any Bitly short link already pointing at it.
+          </p>
+          <div style={{ background: C.ink3, border: `1px solid ${C.line}`, borderRadius: 10, padding: 12, marginBottom: 18 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 5 }}><Badge>{confirmDel.code}</Badge><span style={{ fontSize: 12.5, color: C.white, fontWeight: 500 }}>{confirmDel.title}</span></div>
+            <div className="mono" style={{ fontSize: 11, color: C.fog2, wordBreak: 'break-all' }}>{confirmDel.url}</div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 9 }}>
+            <Btn variant="ghost" onClick={() => setConfirmDel(null)}>Cancel</Btn>
+            <Btn variant="danger" onClick={removeLink} disabled={delBusy}>{delBusy ? 'Deleting…' : 'Delete link'}</Btn>
+          </div>
+        </Modal>
       )}
     </div>
   );
@@ -1202,6 +1228,162 @@ function Users({ user }) {
   );
 }
 
+/* ----------------- LINK HUB (self-hosted short links) ----------------- */
+function LinkHub({ user }) {
+  const [links, setLinks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ longUrl: '', title: '', slug: '' });
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+  const [q, setQ] = useState('');
+  const [confirmDel, setConfirmDel] = useState(null);
+  const [delBusy, setDelBusy] = useState(false);
+  const [statsFor, setStatsFor] = useState(null);
+  const [stats, setStats] = useState(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    api.hub().then((d) => setLinks(d.links)).catch((e) => toastErr(e.message)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function create() {
+    if (!form.longUrl.trim()) return toastErr('Enter a destination URL');
+    setBusy(true);
+    try {
+      const r = await api.createHubLink(form);
+      setResult(r);
+      setLinks((ls) => [r, ...ls]);
+      navigator.clipboard?.writeText(r.shortUrl).catch(() => {});
+      toast('Short link created & copied');
+      setForm({ longUrl: '', title: '', slug: '' });
+    } catch (e) { toastErr(e.message); } finally { setBusy(false); }
+  }
+  async function doDelete() {
+    if (!confirmDel) return;
+    setDelBusy(true);
+    try { await api.deleteHubLink(confirmDel.id); toast('Link deleted'); setConfirmDel(null); load(); }
+    catch (e) { toastErr(e.message); } finally { setDelBusy(false); }
+  }
+  async function openStats(l) {
+    setStatsFor(l); setStats(null);
+    try { setStats(await api.hubStats(l.id)); } catch (e) { toastErr(e.message); }
+  }
+
+  const filtered = useMemo(() => !q ? links : links.filter((l) => `${l.slug} ${l.long_url} ${l.title || ''}`.toLowerCase().includes(q.toLowerCase())), [links, q]);
+  const totalClicks = useMemo(() => links.reduce((s, l) => s + (l.clicks || 0), 0), [links]);
+  const cols = '1.6fr 1.4fr 70px 104px';
+
+  return (
+    <div>
+      <PageHead title="Link Hub" sub="Cleveland Brothers' own short links — shortened, QR-ready, and tracked in-house. No third party." />
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16, alignItems: 'start', marginBottom: 22 }}>
+        <div className="cb-fade" style={{ ...card, padding: 22 }}>
+          <Field label="Destination URL" param="long URL">
+            <input value={form.longUrl} onChange={(e) => setForm({ ...form, longUrl: e.target.value })} placeholder="https://www.clevelandbrothers.com/page" style={inputStyle} />
+          </Field>
+          <Field label="Label" hint="Optional — helps you find this link later.">
+            <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Spring rental flyer" style={inputStyle} />
+          </Field>
+          <Field label="Custom back-half" hint="Optional — leave blank for a random code.">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span className="mono" style={{ fontSize: 12.5, color: C.fog2 }}>/s/</span>
+              <input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder="spring-rental" className="mono" style={inputStyle} />
+            </div>
+          </Field>
+          <Btn disabled={busy} onClick={create} style={{ width: '100%' }}>{busy ? 'Creating…' : 'Create short link + QR'}</Btn>
+        </div>
+
+        <div className="cb-fade" style={{ ...card, padding: 20, position: 'sticky', top: 0 }}>
+          <div className="mono" style={{ fontSize: 10.5, letterSpacing: '.16em', textTransform: 'uppercase', color: C.fog2, marginBottom: 14 }}>Result</div>
+          {result ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 13 }}>
+              <QR value={`${result.shortUrl}?s=qr`} size={166} label={result.slug} />
+              <a href={result.shortUrl} target="_blank" rel="noreferrer" className="mono" style={{ fontSize: 14, fontWeight: 600, color: ACCENT, wordBreak: 'break-all', textAlign: 'center' }}>{result.shortUrl}</a>
+              <button onClick={() => { navigator.clipboard?.writeText(result.shortUrl); toast('Copied'); }} style={{ cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: '7px 14px', borderRadius: 8, background: C.ink3, border: `1px solid ${C.line2}`, color: C.white }}>Copy short link</button>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', color: C.fog2, fontSize: 13, padding: '30px 0' }}>
+              <div style={{ fontSize: 26, marginBottom: 10, opacity: 0.6 }}>🔗</div>
+              Your short link and QR appear here.
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
+        <h3 style={{ fontFamily: 'Archivo', fontWeight: 700, fontSize: 15 }}>Short links<span style={{ color: C.fog, fontWeight: 500, fontSize: 13 }}> · {totalClicks} total clicks</span></h3>
+        <div style={{ width: 260 }}><Search value={q} onChange={setQ} placeholder="Search short links…" /></div>
+      </div>
+      <div style={{ ...card, overflow: 'hidden' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 12, padding: '11px 18px', borderBottom: `1px solid ${C.line}`, background: C.ink3, fontSize: 10.5, letterSpacing: '.08em', textTransform: 'uppercase', color: C.fog2, fontWeight: 600 }}>
+          <span>Short link</span><span>Destination</span><span style={{ textAlign: 'right' }}>Clicks</span><span style={{ textAlign: 'right' }}>Actions</span>
+        </div>
+        {loading ? <div style={{ padding: 44, textAlign: 'center', color: C.fog2, fontSize: 13 }}>Loading…</div>
+          : filtered.length === 0 ? <div style={{ padding: 44, textAlign: 'center', color: C.fog2, fontSize: 13 }}>No short links yet — create one above.</div>
+          : <div style={{ maxHeight: 'calc(100vh - 470px)', overflowY: 'auto' }}>
+            {filtered.map((l) => (
+              <div key={l.id} style={{ display: 'grid', gridTemplateColumns: cols, gap: 12, alignItems: 'center', padding: '12px 18px', borderBottom: `1px solid ${C.line}` }}>
+                <div style={{ minWidth: 0 }}>
+                  <a href={l.shortUrl} target="_blank" rel="noreferrer" className="mono" style={{ fontSize: 13, fontWeight: 600, color: ACCENT, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>/s/{l.slug}</a>
+                  {l.title && <span style={{ fontSize: 11.5, color: C.fog2 }}>{l.title}</span>}
+                </div>
+                <div className="mono" style={{ fontSize: 11, color: C.fog, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{l.long_url}</div>
+                <button onClick={() => openStats(l)} title="View analytics" style={{ textAlign: 'right', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Archivo', fontWeight: 800, fontSize: 16, color: l.clicks > 0 ? ACCENT : C.fog2 }}>{l.clicks}</button>
+                <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                  <button title="Analytics" onClick={() => openStats(l)} style={iconBtn}>📊</button>
+                  <button title="Copy" onClick={() => { navigator.clipboard?.writeText(l.shortUrl); toast('Copied'); }} style={iconBtn}>⧉</button>
+                  <details style={{ position: 'relative' }}>
+                    <summary style={{ ...iconBtn, listStyle: 'none' }}>▦</summary>
+                    <div style={{ position: 'absolute', right: 0, marginTop: 6, zIndex: 30, ...card, padding: 14, boxShadow: '0 12px 30px rgba(0,0,0,.5)' }}>
+                      <QR value={`${l.shortUrl}?s=qr`} size={150} label={l.slug} />
+                    </div>
+                  </details>
+                  {can(user, 'approver') && <button title="Delete" onClick={() => setConfirmDel(l)} style={{ ...iconBtn, color: '#FFB020' }}>🗑</button>}
+                </div>
+              </div>
+            ))}
+          </div>}
+      </div>
+
+      {statsFor && (
+        <Modal title={`/s/${statsFor.slug}`} sub={statsFor.long_url} onClose={() => setStatsFor(null)} width={520}>
+          {!stats ? <div style={{ padding: 30, textAlign: 'center', color: C.fog2, fontSize: 13 }}>Loading analytics…</div>
+            : <div>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+                <div style={{ ...card, padding: '14px 16px', flex: 1, background: C.ink3 }}><div style={{ fontSize: 11.5, color: C.fog2, marginBottom: 4 }}>Total clicks</div><div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 26 }}>{stats.total}</div></div>
+                <div style={{ ...card, padding: '14px 16px', flex: 1, background: C.ink3 }}><div style={{ fontSize: 11.5, color: C.fog2, marginBottom: 4 }}>Last 14 days</div><div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 26 }}>{stats.series.reduce((s, p) => s + p.value, 0)}</div></div>
+              </div>
+              <div style={{ marginBottom: 8, fontSize: 12, color: C.fog, fontWeight: 600 }}>Clicks · last 14 days</div>
+              <TrendChart points={stats.series} height={80} />
+              <div style={{ marginTop: 16, marginBottom: 9, fontSize: 12, color: C.fog, fontWeight: 600 }}>By device</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {stats.byDevice.length === 0 ? <span style={{ fontSize: 12.5, color: C.fog2 }}>No clicks yet.</span>
+                  : stats.byDevice.map((d) => (
+                    <div key={d.device} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 12.5 }}>
+                      <span style={{ textTransform: 'capitalize', color: C.fog, width: 78 }}>{d.device}</span>
+                      <div style={{ flex: 1, height: 7, borderRadius: 99, background: C.ink3, overflow: 'hidden' }}><div style={{ height: '100%', width: `${(d.n / Math.max(1, stats.total)) * 100}%`, background: ACCENT, borderRadius: 99 }} /></div>
+                      <span className="mono" style={{ width: 30, textAlign: 'right', color: C.white }}>{d.n}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>}
+        </Modal>
+      )}
+      {confirmDel && (
+        <Modal title="Delete short link" sub="This removes the link and its click history." onClose={() => setConfirmDel(null)} width={420}>
+          <p style={{ fontSize: 13.5, color: C.fog, lineHeight: 1.6, marginBottom: 18 }}>Delete <span className="mono" style={{ color: C.white }}>/s/{confirmDel.slug}</span>? Anyone who scans the QR or clicks the link afterward will hit a dead link. This can't be undone.</p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 9 }}>
+            <Btn variant="ghost" onClick={() => setConfirmDel(null)}>Cancel</Btn>
+            <Btn variant="danger" onClick={doDelete} disabled={delBusy}>{delBusy ? 'Deleting…' : 'Delete link'}</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 /* ----------------- APP SHELL ----------------- */
 const NAV_SECTIONS = [
   ['', [
@@ -1215,6 +1397,7 @@ const NAV_SECTIONS = [
   ['Links & tracking', [
     ['links', 'UTM links', '⛓', 'user'],
     ['linksqr', 'Links & QR', '▦', 'user'],
+    ['hub', 'Link Hub', '🔗', 'user'],
   ]],
   ['Administration', [
     ['audit', 'Audit log', '◷', 'approver'],
@@ -1382,6 +1565,7 @@ export default function Portal() {
           {view === 'approvals' && <Approvals {...props} />}
           {view === 'links' && <UtmLinks {...props} />}
           {view === 'linksqr' && <LinksQR {...props} />}
+          {view === 'hub' && <LinkHub {...props} />}
           {view === 'taxonomy' && <Taxonomy {...props} />}
           {view === 'audit' && <AuditLog {...props} />}
           {view === 'users' && <Users {...props} />}
