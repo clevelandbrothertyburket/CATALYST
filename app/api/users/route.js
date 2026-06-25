@@ -58,7 +58,7 @@ export async function POST(req) {
       await sendInviteEmail({ to: email, name, role, tempPassword: password, loginUrl, invitedBy: auth.user.name });
       emailed = true;
     } else {
-      emailError = 'Email not configured (RESEND_API_KEY missing) — share the credentials manually.';
+      emailError = 'Email not configured (ZAPIER_EMAIL_WEBHOOK_URL missing) — share the credentials manually.';
     }
   } catch (e) {
     emailError = String(e.message || e);
