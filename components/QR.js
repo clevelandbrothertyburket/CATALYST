@@ -59,7 +59,7 @@ export function QR({ value, size = 160, label, svgMarkup }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
       {svgMarkup && svg ? (
-        // Bitly's SVG carries its own large fixed dimensions — render it as an
+        // A supplied SVG may carry its own large fixed dimensions — render it as an
         // image scaled to fit the box so it can't overflow the result panel.
         <div ref={ref} style={box}>
           <img alt="QR code" src={`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`}

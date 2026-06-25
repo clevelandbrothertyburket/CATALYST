@@ -36,6 +36,22 @@ function Spark({ points, height = 84 }) {
   );
 }
 
+function Bars({ rows }) {
+  if (!rows || rows.length === 0) return <span style={{ fontSize: 12.5, color: C.fog2 }}>No data yet.</span>;
+  const max = Math.max(1, ...rows.map((r) => r.n));
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {rows.map((r) => (
+        <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 12.5 }}>
+          <span title={r.label} style={{ color: C.fog, width: 104, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>{r.label}</span>
+          <div style={{ flex: 1, height: 7, borderRadius: 99, background: C.ink3, overflow: 'hidden' }}><div style={{ height: '100%', width: `${(r.n / max) * 100}%`, background: ACCENT, borderRadius: 99 }} /></div>
+          <span className="mono" style={{ width: 34, textAlign: 'right', color: C.white }}>{r.n}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+const statLabel = { fontSize: 11.5, color: C.fog, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 };
 const iconBtn = { cursor: 'pointer', width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: C.ink3, border: `1px solid ${C.line2}`, color: C.white, fontSize: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' };
 const can = (u, r) => { const RANK = { viewer: 0, user: 1, approver: 2, admin: 3 }; return u && (RANK[u.role] ?? -1) >= (RANK[r] ?? 99); };
 
@@ -192,22 +208,20 @@ export default function QrPlatform() {
         <Modal title={`/s/${statsFor.slug}`} sub={statsFor.long_url} onClose={() => setStatsFor(null)} width={520}>
           {!stats ? <div style={{ padding: 30, textAlign: 'center', color: C.fog2, fontSize: 13 }}>Loading analytics…</div>
             : <div>
-              <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-                <div style={{ ...card, padding: '14px 16px', flex: 1, background: C.ink3 }}><div style={{ fontSize: 11.5, color: C.fog2, marginBottom: 4 }}>Total clicks</div><div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 26 }}>{stats.total}</div></div>
-                <div style={{ ...card, padding: '14px 16px', flex: 1, background: C.ink3 }}><div style={{ fontSize: 11.5, color: C.fog2, marginBottom: 4 }}>Last 14 days</div><div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 26 }}>{stats.series.reduce((s, p) => s + p.value, 0)}</div></div>
+              <div style={{ display: 'flex', gap: 11, marginBottom: 18 }}>
+                <div style={{ ...card, padding: '13px 16px', flex: 1, background: C.ink3 }}><div style={{ fontSize: 11, color: C.fog2, marginBottom: 4 }}>Total</div><div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 27, color: ACCENT }}>{stats.total}</div></div>
+                <div style={{ ...card, padding: '13px 16px', flex: 1, background: C.ink3 }}><div style={{ fontSize: 11, color: C.fog2, marginBottom: 4 }}>QR scans</div><div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 27 }}>{stats.bySource.find((r) => r.label === 'qr')?.n || 0}</div></div>
+                <div style={{ ...card, padding: '13px 16px', flex: 1, background: C.ink3 }}><div style={{ fontSize: 11, color: C.fog2, marginBottom: 4 }}>Link clicks</div><div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 27 }}>{stats.bySource.find((r) => r.label === 'link')?.n || 0}</div></div>
               </div>
-              <div style={{ marginBottom: 8, fontSize: 12, color: C.fog, fontWeight: 600 }}>Clicks · last 14 days</div>
+              <div style={statLabel}>Activity · last 14 days</div>
               <Spark points={stats.series} />
-              <div style={{ marginTop: 16, marginBottom: 9, fontSize: 12, color: C.fog, fontWeight: 600 }}>By device</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {stats.byDevice.length === 0 ? <span style={{ fontSize: 12.5, color: C.fog2 }}>No clicks yet.</span>
-                  : stats.byDevice.map((d) => (
-                    <div key={d.device} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 12.5 }}>
-                      <span style={{ textTransform: 'capitalize', color: C.fog, width: 78 }}>{d.device}</span>
-                      <div style={{ flex: 1, height: 7, borderRadius: 99, background: C.ink3, overflow: 'hidden' }}><div style={{ height: '100%', width: `${(d.n / Math.max(1, stats.total)) * 100}%`, background: ACCENT, borderRadius: 99 }} /></div>
-                      <span className="mono" style={{ width: 30, textAlign: 'right', color: C.white }}>{d.n}</span>
-                    </div>
-                  ))}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 28px', marginTop: 20 }}>
+                <div><div style={statLabel}>Device</div><Bars rows={stats.byDevice} /></div>
+                <div><div style={statLabel}>Browser</div><Bars rows={stats.byBrowser} /></div>
+                <div><div style={statLabel}>Operating system</div><Bars rows={stats.byOs} /></div>
+                <div><div style={statLabel}>Country</div><Bars rows={stats.byCountry} /></div>
+                <div><div style={statLabel}>City</div><Bars rows={stats.byCity} /></div>
+                <div><div style={statLabel}>Referrer</div><Bars rows={stats.byReferrer} /></div>
               </div>
             </div>}
         </Modal>

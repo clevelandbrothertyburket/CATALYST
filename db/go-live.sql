@@ -148,7 +148,9 @@ CREATE TABLE IF NOT EXISTS cb_clicks (
   referrer  TEXT,
   device    TEXT,
   browser   TEXT,
-  country   TEXT
+  os        TEXT,
+  country   TEXT,
+  city      TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_cb_clicks_link ON cb_clicks(link_id, ts DESC);
 

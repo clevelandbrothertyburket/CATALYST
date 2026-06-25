@@ -11,13 +11,16 @@ export async function GET(req) {
   if (!id) return Response.json({ error: 'id required' }, { status: 400 });
 
   const since = new Date(Date.now() - 13 * 24 * 3600 * 1000).toISOString();
-  const [byDay, byDevice, byCountry, total] = await Promise.all([
+  const [byDay, byDevice, byBrowser, byOs, byCountry, byCity, byReferrer, bySource, total] = await Promise.all([
     sql`SELECT to_char(date_trunc('day', ts), 'YYYY-MM-DD') AS day, count(*)::int AS n
         FROM cb_clicks WHERE link_id = ${id} AND ts >= ${since} GROUP BY day ORDER BY day`,
-    sql`SELECT coalesce(device,'unknown') AS device, count(*)::int AS n
-        FROM cb_clicks WHERE link_id = ${id} GROUP BY device ORDER BY n DESC`,
-    sql`SELECT coalesce(country,'—') AS country, count(*)::int AS n
-        FROM cb_clicks WHERE link_id = ${id} GROUP BY country ORDER BY n DESC LIMIT 6`,
+    sql`SELECT coalesce(device,'unknown') AS label, count(*)::int AS n FROM cb_clicks WHERE link_id = ${id} GROUP BY 1 ORDER BY n DESC LIMIT 8`,
+    sql`SELECT coalesce(browser,'unknown') AS label, count(*)::int AS n FROM cb_clicks WHERE link_id = ${id} GROUP BY 1 ORDER BY n DESC LIMIT 8`,
+    sql`SELECT coalesce(os,'unknown') AS label, count(*)::int AS n FROM cb_clicks WHERE link_id = ${id} GROUP BY 1 ORDER BY n DESC LIMIT 8`,
+    sql`SELECT coalesce(country,'—') AS label, count(*)::int AS n FROM cb_clicks WHERE link_id = ${id} GROUP BY 1 ORDER BY n DESC LIMIT 8`,
+    sql`SELECT coalesce(city,'—') AS label, count(*)::int AS n FROM cb_clicks WHERE link_id = ${id} GROUP BY 1 ORDER BY n DESC LIMIT 8`,
+    sql`SELECT coalesce(referrer,'Direct / QR') AS label, count(*)::int AS n FROM cb_clicks WHERE link_id = ${id} GROUP BY 1 ORDER BY n DESC LIMIT 8`,
+    sql`SELECT coalesce(source,'link') AS label, count(*)::int AS n FROM cb_clicks WHERE link_id = ${id} GROUP BY 1 ORDER BY n DESC`,
     sql`SELECT count(*)::int AS n FROM cb_clicks WHERE link_id = ${id}`,
   ]);
 
@@ -29,5 +32,5 @@ export async function GET(req) {
     series.push({ day: d, value: map[d] || 0 });
   }
 
-  return Response.json({ total: total[0].n, series, byDevice, byCountry });
+  return Response.json({ total: total[0].n, series, byDevice, byBrowser, byOs, byCountry, byCity, byReferrer, bySource });
 }
