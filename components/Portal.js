@@ -375,6 +375,13 @@ function Chip({ children, on, ghost, onClick }) {
   return <button onClick={onClick} style={{ cursor: 'pointer', padding: '8px 14px', borderRadius: 10, fontSize: 12.5, fontWeight: on ? 600 : 500, background: on ? ACCENT : C.ink3, color: on ? ACCENT_TEXT : '#fff', border: `1px solid ${on ? ACCENT : C.line2}`, borderStyle: ghost && !on ? 'dashed' : 'solid' }}>{children}</button>;
 }
 function Seg({ k, v }) { return <span><span style={{ color: ACCENT }}>{k}=</span><span style={{ color: '#fff' }}>{v || '…'}</span><span style={{ color: ACCENT }}>&</span></span>; }
+// Quick-pick destination sites for UTM links. Selecting one fills the base of
+// the destination URL; the user then appends the page path.
+const CAT_SITES = [
+  ['https://parts.cat.com/', 'Parts · parts.cat.com'],
+  ['https://shop.cat.com/', 'Shop · shop.cat.com'],
+  ['https://rent.cat.com/', 'Rent · rent.cat.com'],
+];
 function UtmLinks({ user, data, reload }) {
   const usable = data.codes.filter((c) => c.status === 'active' || c.status === 'deprecated');
   const [codeId, setCodeId] = useState('');
@@ -444,7 +451,13 @@ function UtmLinks({ user, data, reload }) {
               {medium === '__c' && <input value={mc} onChange={(e) => setMc(e.target.value)} placeholder="custom medium" className="mono" style={{ ...inputStyle, marginTop: 9 }} />}
             </Field>
             <Field label="Title" param="utm_term" hint="Describes this specific link."><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. spring-promo-hero" className="mono" style={inputStyle} /></Field>
-            <Field label="Destination link" param="base URL"><input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://rent.cat.com/your-page" style={inputStyle} /></Field>
+            <Field label="Destination site" hint="Pick the Cat site this link points to, then add the page path below.">
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {CAT_SITES.map(([base, label]) => <Chip key={base} on={url.startsWith(base)} onClick={() => setUrl(base)}>{label}</Chip>)}
+                <Chip ghost on={!!url && !CAT_SITES.some(([base]) => url.startsWith(base))} onClick={() => setUrl('')}>+ Other</Chip>
+              </div>
+            </Field>
+            <Field label="Destination link" param="base URL" hint="The full page URL. The site picker above fills the domain; add the rest of the path."><input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://rent.cat.com/your-page" style={inputStyle} /></Field>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 4 }}>
               <Btn disabled={!ready} onClick={() => create(true)}>Create &amp; keep code for next link</Btn>
               <Btn variant="ghost" disabled={!ready} onClick={() => create(false)}>Create one &amp; reset</Btn>
