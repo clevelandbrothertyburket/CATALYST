@@ -521,6 +521,9 @@ const CAT_SITES = [
   ['https://shop.cat.com/', 'Shop · shop.cat.com'],
   ['https://rent.cat.com/', 'Rent · rent.cat.com'],
 ];
+// Destination filters for the history view: [hostname, short label].
+const DEST_FILTERS = [['parts.cat.com', 'Parts'], ['shop.cat.com', 'Shop'], ['rent.cat.com', 'Rent']];
+const hostOf = (s) => { try { return new URL(s).hostname; } catch { return ''; } };
 const iconBtn = {
   cursor: 'pointer', width: 30, height: 30, borderRadius: 8, flexShrink: 0,
   background: C.ink3, border: `1px solid ${C.line2}`, color: C.white, fontSize: 13,
@@ -546,6 +549,14 @@ function UtmLinks({ user, data, reload }) {
   const [medium, setMedium] = useState(''); const [mc, setMc] = useState('');
   const [title, setTitle] = useState(''); const [url, setUrl] = useState('');
   const [tab, setTab] = useState('build'); const [q, setQ] = useState('');
+  const [destFilter, setDestFilter] = useState('');
+
+  // Group approved codes by division/industry for the dropdown.
+  const codesByBU = useMemo(() => {
+    const m = {};
+    usable.forEach((c) => { (m[c.business_unit] || (m[c.business_unit] = [])).push(c); });
+    return Object.entries(m).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [usable]);
 
   const codeRec = usable.find((c) => c.id === codeId);
   const contentVal = content === '__c' ? cc.trim() : content;
@@ -563,7 +574,19 @@ function UtmLinks({ user, data, reload }) {
       reload();
     } catch (e) { toastErr(e.message); }
   }
-  const links = useMemo(() => !q ? data.links : data.links.filter((l) => `${l.code} ${l.title} ${l.url} ${l.medium}`.toLowerCase().includes(q.toLowerCase())), [data.links, q]);
+  const links = useMemo(() => data.links.filter((l) => {
+    if (q && !`${l.code} ${l.title} ${l.url} ${l.medium}`.toLowerCase().includes(q.toLowerCase())) return false;
+    if (destFilter) {
+      const h = hostOf(l.base_url || l.url);
+      if (destFilter === '__other') return !DEST_FILTERS.some(([host]) => host === h);
+      return h === destFilter;
+    }
+    return true;
+  }), [data.links, q, destFilter]);
+  const destCounts = useMemo(() => {
+    const m = {}; data.links.forEach((l) => { const h = hostOf(l.base_url || l.url); m[h] = (m[h] || 0) + 1; });
+    return m;
+  }, [data.links]);
   function exportLinks() {
     const head = ['Code', 'Title', 'Content', 'Medium', 'Campaign', 'Base URL', 'Full URL', 'Created By', 'Created'];
     const rows = data.links.map((l) => [l.code, l.title, l.content, l.medium, l.campaign, l.base_url, l.url, l.created_by, l.created_at]);
@@ -581,10 +604,14 @@ function UtmLinks({ user, data, reload }) {
       {tab === 'build' ? (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 16, alignItems: 'start' }}>
           <div className="cb-fade" style={{ ...card, padding: 24 }}>
-            <Step n={1} label="Campaign code" param="utm_campaign">
+            <Step n={1} label="Campaign code" param="utm_campaign" hint="Grouped by division">
               <select value={codeId} onChange={(e) => setCodeId(e.target.value)} style={inputStyle}>
                 <option value="">Select an approved code…</option>
-                {usable.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.camp_name} ({c.business_unit})</option>)}
+                {codesByBU.map(([bu, list]) => (
+                  <optgroup key={bu} label={bu}>
+                    {list.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.camp_name}</option>)}
+                  </optgroup>
+                ))}
               </select>
             </Step>
             <Step n={2} label="Link type" param="utm_content" hint="What the link sits on">
@@ -633,16 +660,24 @@ function UtmLinks({ user, data, reload }) {
         </div>
       ) : (
         <div>
-          <div style={{ marginBottom: 14, display: 'flex', gap: 10 }}>
+          <div style={{ marginBottom: 12, display: 'flex', gap: 10 }}>
             <Search value={q} onChange={setQ} placeholder="Search links by code, title, URL…" />
             <Btn variant="ghost" onClick={exportLinks}>Export CSV</Btn>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: 11.5, color: C.fog2, fontWeight: 600, marginRight: 2 }}>Destination:</span>
+            <Chip on={destFilter === ''} onClick={() => setDestFilter('')}>All ({data.links.length})</Chip>
+            {DEST_FILTERS.map(([host, label]) => (
+              <Chip key={host} on={destFilter === host} onClick={() => setDestFilter(host)}>{label} ({destCounts[host] || 0})</Chip>
+            ))}
+            <Chip ghost on={destFilter === '__other'} onClick={() => setDestFilter('__other')}>Other</Chip>
           </div>
           <div style={{ ...card, overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1.7fr 0.7fr 1.2fr 0.6fr 78px', gap: 12, padding: '11px 18px', borderBottom: `1px solid ${C.line}`, background: C.ink3, fontSize: 10.5, letterSpacing: '.08em', textTransform: 'uppercase', color: C.fog2, fontWeight: 600 }}>
               <span>Link</span><span>Medium</span><span>Destination</span><span>Created</span><span style={{ textAlign: 'right' }}>Actions</span>
             </div>
             {links.length === 0
-              ? <div style={{ padding: 48, textAlign: 'center', color: C.fog2, fontSize: 13 }}>No links yet. Build one from the <b style={{ color: C.white }}>Build</b> tab.</div>
+              ? <div style={{ padding: 48, textAlign: 'center', color: C.fog2, fontSize: 13 }}>{(q || destFilter) ? 'No links match this filter.' : <>No links yet. Build one from the <b style={{ color: C.white }}>Build</b> tab.</>}</div>
               : <div style={{ maxHeight: 'calc(100vh - 360px)', overflowY: 'auto' }}>
                 {links.map((l, i) => {
                   let host = ''; try { host = new URL(l.base_url || l.url).hostname; } catch {}
