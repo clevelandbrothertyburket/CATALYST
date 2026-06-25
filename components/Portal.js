@@ -78,15 +78,72 @@ function SignIn({ onSignedIn }) {
 }
 
 /* ----------------- DASHBOARD ----------------- */
-function Stat({ label, value, sub, onClick }) {
+function useCountUp(target, ms = 900) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const to = Number(target) || 0;
+    if (to === 0) { setN(0); return; }
+    let raf, start;
+    const tick = (t) => {
+      if (!start) start = t;
+      const p = Math.min(1, (t - start) / ms);
+      setN(Math.round(to * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, ms]);
+  return n;
+}
+
+function StatCard({ label, value, sub, icon, accent, onClick, delay = 0 }) {
+  const n = useCountUp(value);
   return (
-    <div onClick={onClick} style={{ ...card, padding: '18px 20px', flex: 1, minWidth: 0, cursor: onClick ? 'pointer' : 'default' }}>
-      <div style={{ fontSize: 12, color: C.fog, fontWeight: 600, marginBottom: 8 }}>{label}</div>
-      <div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 34, letterSpacing: '-.02em', lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11.5, color: C.fog2, marginTop: 7 }}>{sub}</div>}
+    <div onClick={onClick} className="cb-rise cb-hover" style={{ ...card, padding: '17px 19px', flex: 1, minWidth: 158, cursor: onClick ? 'pointer' : 'default', position: 'relative', overflow: 'hidden', animationDelay: `${delay}ms` }}
+      onMouseEnter={(e) => { e.currentTarget.style.borderColor = accent + '66'; e.currentTarget.style.boxShadow = '0 14px 40px rgba(0,0,0,.45)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.line; e.currentTarget.style.boxShadow = 'none'; }}>
+      <div style={{ position: 'absolute', top: -34, right: -24, width: 120, height: 120, borderRadius: '50%', background: `radial-gradient(circle, ${accent}26, transparent 68%)`, pointerEvents: 'none' }} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, position: 'relative' }}>
+        <span style={{ fontSize: 12, color: C.fog, fontWeight: 600 }}>{label}</span>
+        <span style={{ width: 30, height: 30, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${accent}1f`, color: accent, fontSize: 15 }}>{icon}</span>
+      </div>
+      <div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 36, letterSpacing: '-.025em', lineHeight: 1, position: 'relative' }}>{n}</div>
+      {sub && <div style={{ fontSize: 11.5, color: C.fog2, marginTop: 8, position: 'relative' }}>{sub}</div>}
     </div>
   );
 }
+
+const STATUS_VIZ = [
+  ['active', '#34C759'], ['pending', '#FFB020'], ['deprecated', '#c9a227'],
+  ['retired', '#6E6E78'], ['rejected', '#ff6b6b'], ['archived', '#5b5b66'],
+];
+function Donut({ data, size = 132, stroke = 15 }) {
+  const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  const r = (size - stroke) / 2, c = size / 2, circ = 2 * Math.PI * r;
+  let acc = 0;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <g transform={`rotate(-90 ${c} ${c})`}>
+        <circle cx={c} cy={c} r={r} fill="none" stroke={C.ink3} strokeWidth={stroke} />
+        {data.filter((d) => d.value > 0).map((d, i) => {
+          const len = (d.value / total) * circ, off = acc; acc += len;
+          return <circle key={i} cx={c} cy={c} r={r} fill="none" stroke={d.color} strokeWidth={stroke}
+            strokeDasharray={`${len} ${circ - len}`} strokeDashoffset={-off} strokeLinecap="round"
+            style={{ transition: 'stroke-dasharray .9s cubic-bezier(.22,1,.36,1)' }} />;
+        })}
+      </g>
+    </svg>
+  );
+}
+
+function timeAgo(s) {
+  const d = (Date.now() - new Date(s).getTime()) / 1000;
+  if (d < 60) return 'just now';
+  if (d < 3600) return `${Math.floor(d / 60)}m ago`;
+  if (d < 86400) return `${Math.floor(d / 3600)}h ago`;
+  return `${Math.floor(d / 86400)}d ago`;
+}
+
 function Dashboard({ user, go, data }) {
   const { codes, links, pending } = data;
   const active = codes.filter((c) => c.status === 'active').length;
@@ -95,33 +152,107 @@ function Dashboard({ user, go, data }) {
     return Object.entries(m).sort((a, b) => b[1] - a[1]);
   }, [codes]);
   const max = Math.max(1, ...byBU.map((b) => b[1]));
+  const statusData = useMemo(() => {
+    const m = {}; codes.forEach((c) => (m[c.status] = (m[c.status] || 0) + 1));
+    return STATUS_VIZ.map(([k, color]) => ({ label: k, value: m[k] || 0, color })).filter((d) => d.value > 0);
+  }, [codes]);
+  const activity = useMemo(() => {
+    const a = [
+      ...codes.map((c) => ({ t: c.created_at, kind: 'code', label: c.camp_name, code: c.code, who: c.created_by })),
+      ...links.map((l) => ({ t: l.created_at, kind: 'link', label: l.title, code: l.code, who: l.created_by })),
+    ];
+    return a.sort((x, y) => new Date(y.t) - new Date(x.t)).slice(0, 6);
+  }, [codes, links]);
+  const healthScore = Math.round((active / Math.max(1, codes.length)) * 100);
+
   return (
     <div>
-      <PageHead title={`Welcome back, ${user.name.split(' ')[0]}`} sub="Your campaign taxonomy at a glance." />
-      <div style={{ display: 'flex', gap: 14, marginBottom: 14, flexWrap: 'wrap' }}>
-        <Stat label="Campaign codes" value={codes.length} sub={`${active} active`} onClick={() => go('codes')} />
-        <Stat label="Pending approval" value={pending.length} sub="In the review queue" onClick={() => go('approvals')} />
-        <Stat label="UTM links built" value={links.length} sub="Logged to history" onClick={() => go('links')} />
-        <Stat label="Business units" value={new Set(codes.map((c) => c.bu)).size} sub="Across the taxonomy" onClick={() => go('taxonomy')} />
+      {/* hero */}
+      <div className="cb-fade" style={{ position: 'relative', overflow: 'hidden', borderRadius: 16, border: `1px solid ${C.line}`, background: `linear-gradient(120deg, ${C.ink2}, ${C.ink})`, padding: '22px 24px', marginBottom: 16 }}>
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(620px 240px at 88% -50%, rgba(255,205,17,.13), transparent 60%)' }} />
+        <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 11.5, color: C.fog2, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 9 }}>{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</div>
+            <h1 style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 30, letterSpacing: '-.03em', lineHeight: 1.02 }}>Welcome back, {user.name.split(' ')[0]}</h1>
+            <p style={{ color: C.fog, fontSize: 13.5, marginTop: 7 }}>Your campaign taxonomy, codes, and tracked links — all in one place.</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(52,199,89,.1)', border: '1px solid rgba(52,199,89,.3)', borderRadius: 99, padding: '8px 14px' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.good, boxShadow: '0 0 0 4px rgba(52,199,89,.18)' }} />
+            <span style={{ fontSize: 12.5, fontWeight: 600 }}>{healthScore}% active · taxonomy healthy</span>
+          </div>
+        </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        <div style={{ ...card, padding: 20 }}>
-          <h3 style={{ fontFamily: 'Archivo', fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Codes by business unit</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-            {byBU.map(([name, n]) => (
+
+      {/* stats */}
+      <div style={{ display: 'flex', gap: 13, marginBottom: 14, flexWrap: 'wrap' }}>
+        <StatCard label="Campaign codes" value={codes.length} sub={`${active} active`} icon="⬢" accent="#FFCD11" onClick={() => go('codes')} delay={0} />
+        <StatCard label="Pending approval" value={pending.length} sub="In the review queue" icon="✓" accent="#FFB020" onClick={() => go('approvals')} delay={70} />
+        <StatCard label="UTM links built" value={links.length} sub="Logged to history" icon="⛓" accent="#E2231A" onClick={() => go('links')} delay={140} />
+        <StatCard label="Business units" value={new Set(codes.map((c) => c.bu)).size} sub="Across the taxonomy" icon="⊞" accent="#34C759" onClick={() => go('taxonomy')} delay={210} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 14, marginBottom: 14 }}>
+        {/* bars */}
+        <div className="cb-rise cb-hover" style={{ ...card, padding: 20, animationDelay: '120ms' }}>
+          <h3 style={{ fontFamily: 'Archivo', fontWeight: 700, fontSize: 15, marginBottom: 18 }}>Codes by business unit</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+            {byBU.map(([name, n], i) => (
               <div key={name}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 5 }}>
-                  <span style={{ color: C.fog }}>{name}</span><span className="mono" style={{ color: C.white }}>{n}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 6 }}>
+                  <span style={{ color: C.fog }}>{name}</span><span className="mono" style={{ color: C.white, fontWeight: 600 }}>{n}</span>
                 </div>
-                <div style={{ height: 7, borderRadius: 99, background: C.ink3, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${(n / max) * 100}%`, background: ACCENT, borderRadius: 99 }} />
+                <div style={{ height: 8, borderRadius: 99, background: C.ink3, overflow: 'hidden' }}>
+                  <div className="cb-bar" style={{ height: '100%', width: `${(n / max) * 100}%`, borderRadius: 99, background: 'linear-gradient(90deg, #FFCD11, #E2231A)', animationDelay: `${i * 90 + 200}ms` }} />
                 </div>
               </div>
             ))}
           </div>
         </div>
-        <div style={{ ...card, padding: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        {/* donut */}
+        <div className="cb-rise cb-hover" style={{ ...card, padding: 20, animationDelay: '180ms' }}>
+          <h3 style={{ fontFamily: 'Archivo', fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Lifecycle status</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <Donut data={statusData} />
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 24, lineHeight: 1 }}>{codes.length}</div>
+                <div style={{ fontSize: 10, color: C.fog2 }}>codes</div>
+              </div>
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {statusData.map((d) => (
+                <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
+                  <span style={{ width: 9, height: 9, borderRadius: 3, background: d.color, flexShrink: 0 }} />
+                  <span style={{ color: C.fog, textTransform: 'capitalize', flex: 1 }}>{d.label}</span>
+                  <span className="mono" style={{ color: C.white, fontWeight: 600 }}>{d.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* activity + review */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <div className="cb-rise cb-hover" style={{ ...card, padding: 20, animationDelay: '240ms' }}>
+          <h3 style={{ fontFamily: 'Archivo', fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Recent activity</h3>
+          {activity.length === 0
+            ? <div style={{ padding: '24px 0', textAlign: 'center', color: C.fog2, fontSize: 13 }}>No activity yet.</div>
+            : <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {activity.map((a, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 0', borderBottom: i < activity.length - 1 ? `1px solid ${C.line}` : 'none' }}>
+                  <span style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, background: a.kind === 'link' ? 'rgba(226,35,26,.14)' : 'rgba(255,205,17,.14)', color: a.kind === 'link' ? '#ff6b6b' : '#FFCD11' }}>{a.kind === 'link' ? '⛓' : '⬢'}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, color: C.white, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.kind === 'link' ? 'Link built' : 'Code'} · {a.label}</div>
+                    <div className="mono" style={{ fontSize: 10.5, color: C.fog2 }}>{a.code} · {a.who}</div>
+                  </div>
+                  <span style={{ fontSize: 11, color: C.fog2, flexShrink: 0 }}>{timeAgo(a.t)}</span>
+                </div>
+              ))}
+            </div>}
+        </div>
+        <div className="cb-rise cb-hover" style={{ ...card, padding: 20, animationDelay: '300ms' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <h3 style={{ fontFamily: 'Archivo', fontWeight: 700, fontSize: 15 }}>Review queue</h3>
             <button onClick={() => go('approvals')} style={{ background: 'none', border: 'none', color: ACCENT, fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>Open queue ›</button>
           </div>
@@ -382,6 +513,11 @@ const CAT_SITES = [
   ['https://shop.cat.com/', 'Shop · shop.cat.com'],
   ['https://rent.cat.com/', 'Rent · rent.cat.com'],
 ];
+const iconBtn = {
+  cursor: 'pointer', width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+  background: C.ink3, border: `1px solid ${C.line2}`, color: C.white, fontSize: 13,
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'border-color .15s',
+};
 function UtmLinks({ user, data, reload }) {
   const usable = data.codes.filter((c) => c.status === 'active' || c.status === 'deprecated');
   const [codeId, setCodeId] = useState('');
@@ -479,21 +615,35 @@ function UtmLinks({ user, data, reload }) {
             <Btn variant="ghost" onClick={exportLinks}>Export CSV</Btn>
           </div>
           <div style={{ ...card, overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.7fr 0.7fr 1.2fr 0.6fr 78px', gap: 12, padding: '11px 18px', borderBottom: `1px solid ${C.line}`, background: C.ink3, fontSize: 10.5, letterSpacing: '.08em', textTransform: 'uppercase', color: C.fog2, fontWeight: 600 }}>
+              <span>Link</span><span>Medium</span><span>Destination</span><span>Created</span><span style={{ textAlign: 'right' }}>Actions</span>
+            </div>
             {links.length === 0
-              ? <div style={{ padding: 44, textAlign: 'center', color: C.fog2, fontSize: 13 }}>No links yet.</div>
-              : <div style={{ maxHeight: 'calc(100vh - 320px)', overflowY: 'auto' }}>
-                {links.map((l) => (
-                  <div key={l.id} style={{ padding: '13px 18px', borderBottom: `1px solid ${C.line}`, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 5, flexWrap: 'wrap' }}>
-                        <Badge>{l.code}</Badge><span style={{ fontSize: 12.5, color: C.white, fontWeight: 500 }}>{l.title}</span>
-                        <span style={{ fontSize: 11, color: C.fog2 }}>· {l.medium} · {l.created_by}</span>
+              ? <div style={{ padding: 48, textAlign: 'center', color: C.fog2, fontSize: 13 }}>No links yet. Build one from the <b style={{ color: C.white }}>Build</b> tab.</div>
+              : <div style={{ maxHeight: 'calc(100vh - 360px)', overflowY: 'auto' }}>
+                {links.map((l, i) => {
+                  let host = ''; try { host = new URL(l.base_url || l.url).hostname; } catch {}
+                  return (
+                    <div key={l.id} className="cb-fade" style={{ display: 'grid', gridTemplateColumns: '1.7fr 0.7fr 1.2fr 0.6fr 78px', gap: 12, alignItems: 'center', padding: '12px 18px', borderBottom: i < links.length - 1 ? `1px solid ${C.line}` : 'none', animationDelay: `${Math.min(i, 12) * 30}ms`, transition: 'background .15s' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,.02)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 3 }}>
+                          <Badge>{l.code}</Badge>
+                          <span style={{ fontSize: 12.5, color: C.white, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.title}</span>
+                        </div>
+                        <div className="mono" style={{ fontSize: 10.5, color: C.fog2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.url}</div>
                       </div>
-                      <div className="mono" style={{ fontSize: 11, color: C.fog, wordBreak: 'break-all', lineHeight: 1.5 }}>{l.url}</div>
+                      <span><Badge color={C.fog} bg="rgba(110,110,120,.16)">{l.medium}</Badge></span>
+                      <span className="mono" style={{ fontSize: 11.5, color: C.fog, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{host || '—'}</span>
+                      <span style={{ fontSize: 11, color: C.fog2 }}>{timeAgo(l.created_at)}</span>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <button title="Open link" onClick={() => window.open(l.url, '_blank')} style={iconBtn}>↗</button>
+                        <button title="Copy link" onClick={() => { navigator.clipboard?.writeText(l.url); toast('Copied'); }} style={iconBtn}>⧉</button>
+                      </div>
                     </div>
-                    <Btn variant="subtle" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => { navigator.clipboard?.writeText(l.url); toast('Copied'); }}>Copy</Btn>
-                  </div>
-                ))}
+                  );
+                })}
               </div>}
           </div>
         </div>

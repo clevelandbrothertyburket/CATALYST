@@ -41,6 +41,16 @@ export async function POST(req) {
   ].join('&');
   const url = baseUrl + (baseUrl.includes('?') ? '&' : '?') + qs;
 
+  // Duplicate detection: the exact same tracked link should not be created twice.
+  const dupe = await sql`SELECT id, title, created_by, created_at FROM links WHERE url = ${url} LIMIT 1`;
+  if (dupe.length) {
+    return Response.json({
+      error: `This exact tracked link already exists — built by ${dupe[0].created_by}. Find it in History.`,
+      duplicate: true,
+      existing: dupe[0],
+    }, { status: 409 });
+  }
+
   const id = newId('l');
   await sql`
     INSERT INTO links (id, code, campaign, content, medium, title, base_url, url, created_by)
