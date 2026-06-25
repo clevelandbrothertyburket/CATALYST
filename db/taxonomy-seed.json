@@ -1,0 +1,491 @@
+{
+  "departments": {
+    "m": "Marketing",
+    "h": "HR"
+  },
+  "businessUnits": {
+    "g": "Construction Division",
+    "e": "Industrial Engine Division",
+    "r": "One Call Rental Division",
+    "t": "Truck Engine Division",
+    "a": "Corporate Division"
+  },
+  "initiatives": {
+    "g": {
+      "ne": "New Equipment Sales",
+      "ps": "Product Support",
+      "ue": "Used Equipment",
+      "st": "SITECH"
+    },
+    "e": {
+      "rp": "REPS",
+      "lp": "LEPS",
+      "pu": "Power Used",
+      "er": "Engine Rebuild Center",
+      "ne": "New Equipment Sales",
+      "re": "Rental"
+    },
+    "r": {
+      "re": "Rental"
+    },
+    "t": {
+      "tb": "Truck Bodies",
+      "ts": "Truck Service"
+    },
+    "a": {
+      "rc": "Recruiting",
+      "cb": "Cleveland Brothers Brand",
+      "re": "Rental"
+    }
+  },
+  "campaigns": {
+    "ne": {
+      "bno": "BCP National Offer",
+      "gno": "GCI National Offer",
+      "ghe": "GCI HEX Focus",
+      "bld": "BCP Lapsed/Dormant",
+      "bch": "BCP CTL & Hex Focus",
+      "cqt": "Conquest Cat Credits",
+      "bpa": "BCP Project ATOM",
+      "att": "Construction Attachments",
+      "rep": "Retail Electric Power"
+    },
+    "rp": {
+      "rpr": "REPS Power Resiliency",
+      "rsg": "REPS Small Gas Generators"
+    },
+    "re": {
+      "rna": "Rental New Account",
+      "rld": "Rental Lapsed/Dormant",
+      "cbu": "Cross Business Unit",
+      "rep": "Retail Electric Power",
+      "pug": "Power Used General",
+      "pow": "Power Rental"
+    },
+    "ps": {
+      "reb": "Rebuilds",
+      "ucp": "Undercarriage Promotion",
+      "prt": "Parts Campaign",
+      "eqo": "Equipment Onboarding",
+      "hym": "CB HYMAC",
+      "pse": "Prioritized Service Events",
+      "get": "Ground Engaging Tools",
+      "cva": "Customer Value Agreement"
+    },
+    "ue": {
+      "usd": "Used General"
+    },
+    "lp": {
+      "lep": "Large Equipment General",
+      "uet": "Utilities Energy Transition"
+    },
+    "tb": {
+      "trb": "Truck Bodies General"
+    },
+    "ts": {
+      "trs": "Truck Service"
+    },
+    "pu": {
+      "pug": "Power Used General"
+    },
+    "rc": {
+      "gen": "General Recruiting"
+    },
+    "er": {
+      "reb": "Rebuilds"
+    },
+    "cb": {
+      "brd": "Branding"
+    },
+    "st": {
+      "stg": "SITECH General"
+    }
+  },
+  "records": [
+    {
+      "code": "m-g-ne-bno",
+      "dept": "m",
+      "bu": "g",
+      "init": "ne",
+      "camp": "bno",
+      "campName": "BCP National Offer",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "New Equipment Sales"
+    },
+    {
+      "code": "m-g-ne-gno",
+      "dept": "m",
+      "bu": "g",
+      "init": "ne",
+      "camp": "gno",
+      "campName": "GCI National Offer",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "New Equipment Sales"
+    },
+    {
+      "code": "m-g-ne-ghe",
+      "dept": "m",
+      "bu": "g",
+      "init": "ne",
+      "camp": "ghe",
+      "campName": "GCI HEX Focus",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "New Equipment Sales"
+    },
+    {
+      "code": "m-g-ne-bld",
+      "dept": "m",
+      "bu": "g",
+      "init": "ne",
+      "camp": "bld",
+      "campName": "BCP Lapsed/Dormant",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "New Equipment Sales"
+    },
+    {
+      "code": "m-e-rp-rpr",
+      "dept": "m",
+      "bu": "e",
+      "init": "rp",
+      "camp": "rpr",
+      "campName": "REPS Power Resiliency",
+      "department": "Marketing",
+      "businessUnit": "Industrial Engine Division",
+      "initiative": "REPS"
+    },
+    {
+      "code": "m-r-re-rna",
+      "dept": "m",
+      "bu": "r",
+      "init": "re",
+      "camp": "rna",
+      "campName": "Rental New Account",
+      "department": "Marketing",
+      "businessUnit": "One Call Rental Division",
+      "initiative": "Rental"
+    },
+    {
+      "code": "m-g-ne-bch",
+      "dept": "m",
+      "bu": "g",
+      "init": "ne",
+      "camp": "bch",
+      "campName": "BCP CTL & Hex Focus",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "New Equipment Sales"
+    },
+    {
+      "code": "m-g-ps-reb",
+      "dept": "m",
+      "bu": "g",
+      "init": "ps",
+      "camp": "reb",
+      "campName": "Rebuilds",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "Product Support"
+    },
+    {
+      "code": "m-g-ps-ucp",
+      "dept": "m",
+      "bu": "g",
+      "init": "ps",
+      "camp": "ucp",
+      "campName": "Undercarriage Promotion",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "Product Support"
+    },
+    {
+      "code": "m-g-ps-prt",
+      "dept": "m",
+      "bu": "g",
+      "init": "ps",
+      "camp": "prt",
+      "campName": "Parts Campaign",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "Product Support"
+    },
+    {
+      "code": "m-g-ne-cqt",
+      "dept": "m",
+      "bu": "g",
+      "init": "ne",
+      "camp": "cqt",
+      "campName": "Conquest Cat Credits",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "New Equipment Sales"
+    },
+    {
+      "code": "m-g-ps-eqo",
+      "dept": "m",
+      "bu": "g",
+      "init": "ps",
+      "camp": "eqo",
+      "campName": "Equipment Onboarding",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "Product Support"
+    },
+    {
+      "code": "m-r-re-rld",
+      "dept": "m",
+      "bu": "r",
+      "init": "re",
+      "camp": "rld",
+      "campName": "Rental Lapsed/Dormant",
+      "department": "Marketing",
+      "businessUnit": "One Call Rental Division",
+      "initiative": "Rental"
+    },
+    {
+      "code": "m-g-ue-usd",
+      "dept": "m",
+      "bu": "g",
+      "init": "ue",
+      "camp": "usd",
+      "campName": "Used General",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "Used Equipment"
+    },
+    {
+      "code": "m-e-lp-lep",
+      "dept": "m",
+      "bu": "e",
+      "init": "lp",
+      "camp": "lep",
+      "campName": "Large Equipment General",
+      "department": "Marketing",
+      "businessUnit": "Industrial Engine Division",
+      "initiative": "LEPS"
+    },
+    {
+      "code": "m-t-tb-trb",
+      "dept": "m",
+      "bu": "t",
+      "init": "tb",
+      "camp": "trb",
+      "campName": "Truck Bodies General",
+      "department": "Marketing",
+      "businessUnit": "Truck Engine Division",
+      "initiative": "Truck Bodies"
+    },
+    {
+      "code": "m-t-ts-trs",
+      "dept": "m",
+      "bu": "t",
+      "init": "ts",
+      "camp": "trs",
+      "campName": "Truck Service",
+      "department": "Marketing",
+      "businessUnit": "Truck Engine Division",
+      "initiative": "Truck Service"
+    },
+    {
+      "code": "m-e-pu-pug",
+      "dept": "m",
+      "bu": "e",
+      "init": "pu",
+      "camp": "pug",
+      "campName": "Power Used General",
+      "department": "Marketing",
+      "businessUnit": "Industrial Engine Division",
+      "initiative": "Power Used"
+    },
+    {
+      "code": "m-g-ps-hym",
+      "dept": "m",
+      "bu": "g",
+      "init": "ps",
+      "camp": "hym",
+      "campName": "CB HYMAC",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "Product Support"
+    },
+    {
+      "code": "m-g-ps-pse",
+      "dept": "m",
+      "bu": "g",
+      "init": "ps",
+      "camp": "pse",
+      "campName": "Prioritized Service Events",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "Product Support"
+    },
+    {
+      "code": "h-a-rc-gen",
+      "dept": "h",
+      "bu": "a",
+      "init": "rc",
+      "camp": "gen",
+      "campName": "General Recruiting",
+      "department": "HR",
+      "businessUnit": "Corporate Division",
+      "initiative": "Recruiting"
+    },
+    {
+      "code": "m-e-lp-uet",
+      "dept": "m",
+      "bu": "e",
+      "init": "lp",
+      "camp": "uet",
+      "campName": "Utilities Energy Transition",
+      "department": "Marketing",
+      "businessUnit": "Industrial Engine Division",
+      "initiative": "LEPS"
+    },
+    {
+      "code": "m-g-ne-bpa",
+      "dept": "m",
+      "bu": "g",
+      "init": "ne",
+      "camp": "bpa",
+      "campName": "BCP Project ATOM",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "New Equipment Sales"
+    },
+    {
+      "code": "m-e-er-reb",
+      "dept": "m",
+      "bu": "e",
+      "init": "er",
+      "camp": "reb",
+      "campName": "Rebuilds",
+      "department": "Marketing",
+      "businessUnit": "Industrial Engine Division",
+      "initiative": "Engine Rebuild Center"
+    },
+    {
+      "code": "m-e-rp-rsg",
+      "dept": "m",
+      "bu": "e",
+      "init": "rp",
+      "camp": "rsg",
+      "campName": "REPS Small Gas Generators",
+      "department": "Marketing",
+      "businessUnit": "Industrial Engine Division",
+      "initiative": "REPS"
+    },
+    {
+      "code": "m-a-cb-brd",
+      "dept": "m",
+      "bu": "a",
+      "init": "cb",
+      "camp": "brd",
+      "campName": "Branding",
+      "department": "Marketing",
+      "businessUnit": "Corporate Division",
+      "initiative": "Cleveland Brothers Brand"
+    },
+    {
+      "code": "m-g-ne-att",
+      "dept": "m",
+      "bu": "g",
+      "init": "ne",
+      "camp": "att",
+      "campName": "Construction Attachments",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "New Equipment Sales"
+    },
+    {
+      "code": "m-g-st-stg",
+      "dept": "m",
+      "bu": "g",
+      "init": "st",
+      "camp": "stg",
+      "campName": "SITECH General",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "SITECH"
+    },
+    {
+      "code": "m-a-re-cbu",
+      "dept": "m",
+      "bu": "a",
+      "init": "re",
+      "camp": "cbu",
+      "campName": "Cross Business Unit",
+      "department": "Marketing",
+      "businessUnit": "Corporate Division",
+      "initiative": "Rental"
+    },
+    {
+      "code": "m-e-ne-rep",
+      "dept": "m",
+      "bu": "e",
+      "init": "ne",
+      "camp": "rep",
+      "campName": "Retail Electric Power",
+      "department": "Marketing",
+      "businessUnit": "Industrial Engine Division",
+      "initiative": "New Equipment Sales"
+    },
+    {
+      "code": "m-e-re-rep",
+      "dept": "m",
+      "bu": "e",
+      "init": "re",
+      "camp": "rep",
+      "campName": "Retail Electric Power",
+      "department": "Marketing",
+      "businessUnit": "Industrial Engine Division",
+      "initiative": "Rental"
+    },
+    {
+      "code": "m-e-re-pug",
+      "dept": "m",
+      "bu": "e",
+      "init": "re",
+      "camp": "pug",
+      "campName": "Power Used General",
+      "department": "Marketing",
+      "businessUnit": "Industrial Engine Division",
+      "initiative": "Rental"
+    },
+    {
+      "code": "m-e-re-pow",
+      "dept": "m",
+      "bu": "e",
+      "init": "re",
+      "camp": "pow",
+      "campName": "Power Rental",
+      "department": "Marketing",
+      "businessUnit": "Industrial Engine Division",
+      "initiative": "Rental"
+    },
+    {
+      "code": "m-g-ps-get",
+      "dept": "m",
+      "bu": "g",
+      "init": "ps",
+      "camp": "get",
+      "campName": "Ground Engaging Tools",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "Product Support"
+    },
+    {
+      "code": "m-g-ps-cva",
+      "dept": "m",
+      "bu": "g",
+      "init": "ps",
+      "camp": "cva",
+      "campName": "Customer Value Agreement",
+      "department": "Marketing",
+      "businessUnit": "Construction Division",
+      "initiative": "Product Support"
+    }
+  ]
+}
