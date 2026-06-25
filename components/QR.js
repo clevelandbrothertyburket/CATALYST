@@ -55,11 +55,19 @@ export function QR({ value, size = 160, label, svgMarkup }) {
   }
 
   if (!value && !svgMarkup) return null;
+  const box = { width: size, height: size, background: '#fff', borderRadius: 12, padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxSizing: 'border-box', flexShrink: 0 };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-      <div ref={ref}
-        style={{ width: size, height: size, background: '#fff', borderRadius: 12, padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        dangerouslySetInnerHTML={{ __html: svg }} />
+      {svgMarkup && svg ? (
+        // Bitly's SVG carries its own large fixed dimensions — render it as an
+        // image scaled to fit the box so it can't overflow the result panel.
+        <div ref={ref} style={box}>
+          <img alt="QR code" src={`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`}
+            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+        </div>
+      ) : (
+        <div ref={ref} style={box} dangerouslySetInnerHTML={{ __html: svg }} />
+      )}
       <div style={{ display: 'flex', gap: 8 }}>
         <button onClick={downloadPng} style={qrBtn}>PNG</button>
         <button onClick={downloadSvg} style={qrBtn}>SVG</button>
