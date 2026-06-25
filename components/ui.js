@@ -14,10 +14,10 @@ export const BRANDS = {
     glowA: 'rgba(255,205,17,.13)', glowB: 'rgba(255,205,17,.06)',
   },
   cat: {
-    accent: '#E2231A', accentText: '#ffffff', accentSoft: 'rgba(226,35,26,.16)',
-    logo: 'https://rent.cat.com/content/dam/crs/dealers/one-call-rentals/logo.png',
-    logoFallback: 'CAT RENTALS', name: 'Cat Rentals',
-    glowA: 'rgba(226,35,26,.16)', glowB: 'rgba(226,35,26,.08)',
+    accent: '#FFCD11', accentText: '#0A0A0B', accentSoft: 'rgba(255,205,17,.14)',
+    logo: 'https://www.clevelandbrothers.com/hubfs/branding/cb-logo-header.svg',
+    logoFallback: 'CLEVELAND BROTHERS', name: 'Cleveland Brothers',
+    glowA: 'rgba(255,205,17,.13)', glowB: 'rgba(255,205,17,.06)',
   },
 };
 
@@ -50,7 +50,7 @@ export function Btn({ children, onClick, variant = 'primary', disabled, style, t
     ghost: { background: 'transparent', border: `1px solid ${C.line2}`, color: C.white },
     subtle: { background: C.ink3, border: `1px solid ${C.line2}`, color: C.white },
     good: { background: 'rgba(52,199,89,.15)', border: '1px solid rgba(52,199,89,.4)', color: '#7ee29a' },
-    danger: { background: 'transparent', border: '1px solid #5b2320', color: '#ff6b6b' },
+    danger: { background: 'transparent', border: '1px solid #5a4a1f', color: '#FFB020' },
   };
   return (
     <button type={type || 'button'} title={title} disabled={disabled} onClick={onClick}
@@ -67,7 +67,7 @@ const STATUS_COLORS = {
   pending: [C.warn, 'rgba(255,176,32,.14)'],
   deprecated: ['#c9a227', 'rgba(255,205,17,.12)'],
   retired: [C.fog2, 'rgba(110,110,120,.18)'],
-  rejected: ['#ff6b6b', 'rgba(226,35,26,.14)'],
+  rejected: ['#D99A5B', 'rgba(255,176,32,.12)'],
   archived: [C.fog2, 'rgba(110,110,120,.14)'],
   changes_requested: [C.warn, 'rgba(255,176,32,.14)'],
   approved: [C.good, 'rgba(52,199,89,.14)'],

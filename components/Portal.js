@@ -22,7 +22,7 @@ function ToastHost() {
   const err = msg.startsWith('!');
   return (
     <div style={{ position: 'fixed', left: '50%', bottom: 26, transform: 'translateX(-50%)', zIndex: 200, background: '#fff', color: C.ink, fontWeight: 600, fontSize: 13.5, padding: '11px 20px', borderRadius: 99, boxShadow: '0 12px 40px rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', gap: 9 }}>
-      <span style={{ width: 8, height: 8, borderRadius: '50%', background: err ? C.red : C.good }} />
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: err ? C.warn : C.good }} />
       {err ? msg.slice(1) : msg}
     </div>
   );
@@ -114,8 +114,8 @@ function StatCard({ label, value, sub, icon, accent, onClick, delay = 0 }) {
 }
 
 const STATUS_VIZ = [
-  ['active', '#34C759'], ['pending', '#FFB020'], ['deprecated', '#c9a227'],
-  ['retired', '#6E6E78'], ['rejected', '#ff6b6b'], ['archived', '#5b5b66'],
+  ['active', '#34C759'], ['pending', '#FFCD11'], ['deprecated', '#C99700'],
+  ['retired', '#8A8A93'], ['rejected', '#D99A5B'], ['archived', '#5B5B66'],
 ];
 function Donut({ data, size = 132, stroke = 15 }) {
   const total = data.reduce((s, d) => s + d.value, 0) || 1;
@@ -176,9 +176,17 @@ function Dashboard({ user, go, data }) {
             <h1 style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 30, letterSpacing: '-.03em', lineHeight: 1.02 }}>Welcome back, {user.name.split(' ')[0]}</h1>
             <p style={{ color: C.fog, fontSize: 13.5, marginTop: 7 }}>Your campaign taxonomy, codes, and tracked links — all in one place.</p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(52,199,89,.1)', border: '1px solid rgba(52,199,89,.3)', borderRadius: 99, padding: '8px 14px' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.good, boxShadow: '0 0 0 4px rgba(52,199,89,.18)' }} />
-            <span style={{ fontSize: 12.5, fontWeight: 600 }}>{healthScore}% active · taxonomy healthy</span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 11 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(52,199,89,.1)', border: '1px solid rgba(52,199,89,.3)', borderRadius: 99, padding: '8px 14px' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.good, boxShadow: '0 0 0 4px rgba(52,199,89,.18)' }} />
+              <span style={{ fontSize: 12.5, fontWeight: 600 }}>{healthScore}% active · taxonomy healthy</span>
+            </div>
+            {can(user, 'user') && (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => go('links')} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, padding: '8px 14px', borderRadius: 9, background: ACCENT, color: ACCENT_TEXT, border: 'none' }}>⛓ Build a link</button>
+                <button onClick={() => go('codes')} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, padding: '8px 14px', borderRadius: 9, background: 'transparent', color: '#fff', border: `1px solid ${C.line2}` }}>⬢ Browse codes</button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -187,7 +195,7 @@ function Dashboard({ user, go, data }) {
       <div style={{ display: 'flex', gap: 13, marginBottom: 14, flexWrap: 'wrap' }}>
         <StatCard label="Campaign codes" value={codes.length} sub={`${active} active`} icon="⬢" accent="#FFCD11" onClick={() => go('codes')} delay={0} />
         <StatCard label="Pending approval" value={pending.length} sub="In the review queue" icon="✓" accent="#FFB020" onClick={() => go('approvals')} delay={70} />
-        <StatCard label="UTM links built" value={links.length} sub="Logged to history" icon="⛓" accent="#E2231A" onClick={() => go('links')} delay={140} />
+        <StatCard label="UTM links built" value={links.length} sub="Logged to history" icon="⛓" accent="#FFFFFF" onClick={() => go('links')} delay={140} />
         <StatCard label="Business units" value={new Set(codes.map((c) => c.bu)).size} sub="Across the taxonomy" icon="⊞" accent="#34C759" onClick={() => go('taxonomy')} delay={210} />
       </div>
 
@@ -202,7 +210,7 @@ function Dashboard({ user, go, data }) {
                   <span style={{ color: C.fog }}>{name}</span><span className="mono" style={{ color: C.white, fontWeight: 600 }}>{n}</span>
                 </div>
                 <div style={{ height: 8, borderRadius: 99, background: C.ink3, overflow: 'hidden' }}>
-                  <div className="cb-bar" style={{ height: '100%', width: `${(n / max) * 100}%`, borderRadius: 99, background: 'linear-gradient(90deg, #FFCD11, #E2231A)', animationDelay: `${i * 90 + 200}ms` }} />
+                  <div className="cb-bar" style={{ height: '100%', width: `${(n / max) * 100}%`, borderRadius: 99, background: 'linear-gradient(90deg, #C99700, #FFCD11)', animationDelay: `${i * 90 + 200}ms` }} />
                 </div>
               </div>
             ))}
@@ -241,7 +249,7 @@ function Dashboard({ user, go, data }) {
             : <div style={{ display: 'flex', flexDirection: 'column' }}>
               {activity.map((a, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 0', borderBottom: i < activity.length - 1 ? `1px solid ${C.line}` : 'none' }}>
-                  <span style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, background: a.kind === 'link' ? 'rgba(226,35,26,.14)' : 'rgba(255,205,17,.14)', color: a.kind === 'link' ? '#ff6b6b' : '#FFCD11' }}>{a.kind === 'link' ? '⛓' : '⬢'}</span>
+                  <span style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, background: a.kind === 'link' ? 'rgba(255,255,255,.1)' : 'rgba(255,205,17,.14)', color: a.kind === 'link' ? '#fff' : '#FFCD11' }}>{a.kind === 'link' ? '⛓' : '⬢'}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12.5, color: C.white, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.kind === 'link' ? 'Link built' : 'Code'} · {a.label}</div>
                     <div className="mono" style={{ fontSize: 10.5, color: C.fog2 }}>{a.code} · {a.who}</div>
@@ -518,6 +526,19 @@ const iconBtn = {
   background: C.ink3, border: `1px solid ${C.line2}`, color: C.white, fontSize: 13,
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'border-color .15s',
 };
+function Step({ n, label, param, hint, children }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 9 }}>
+        <span style={{ width: 21, height: 21, borderRadius: 6, flexShrink: 0, background: ACCENT_SOFT, color: ACCENT, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{n}</span>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: '#fff' }}>{label}</span>
+        {param && <span className="mono" style={{ fontSize: 10.5, color: C.fog2 }}>{param}</span>}
+        {hint && <span style={{ fontSize: 11, color: C.fog2, marginLeft: 'auto', textAlign: 'right' }}>{hint}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
 function UtmLinks({ user, data, reload }) {
   const usable = data.codes.filter((c) => c.status === 'active' || c.status === 'deprecated');
   const [codeId, setCodeId] = useState('');
@@ -525,7 +546,6 @@ function UtmLinks({ user, data, reload }) {
   const [medium, setMedium] = useState(''); const [mc, setMc] = useState('');
   const [title, setTitle] = useState(''); const [url, setUrl] = useState('');
   const [tab, setTab] = useState('build'); const [q, setQ] = useState('');
-  const brand = BRANDS.cat;
 
   const codeRec = usable.find((c) => c.id === codeId);
   const contentVal = content === '__c' ? cc.trim() : content;
@@ -551,61 +571,64 @@ function UtmLinks({ user, data, reload }) {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'utm-links.csv'; a.click(); toast(`Exported ${data.links.length} links`);
   }
 
-  const sel = { ...inputStyle };
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 18, padding: '10px 14px', borderRadius: 11, background: ACCENT_SOFT, border: '1px solid rgba(226,35,26,.3)' }}>
-        <BrandLogo brand={brand} height={22} />
-        <div style={{ fontSize: 12.5, color: C.fog }}><b style={{ color: '#fff', fontWeight: 600 }}>Cat website mode.</b> Links here point to the Cat site, so this workspace uses Cat Rentals branding.</div>
-      </div>
-      <PageHead title="UTM links" sub="Build tracked links from an approved campaign code."
-        right={<div style={{ display: 'flex', gap: 8, background: C.ink3, padding: 4, borderRadius: 10, border: `1px solid ${C.line2}` }}>
-          <button onClick={() => setTab('build')} style={{ padding: '7px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12.5, background: tab === 'build' ? ACCENT : 'transparent', color: tab === 'build' ? ACCENT_TEXT : '#fff' }}>Build</button>
-          <button onClick={() => setTab('history')} style={{ padding: '7px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12.5, background: tab === 'history' ? ACCENT : 'transparent', color: tab === 'history' ? ACCENT_TEXT : '#fff' }}>History ({data.links.length})</button>
+      <PageHead title="UTM links" sub="Build a tracked link from an approved campaign code — tagged with UTM parameters so every click is attributed."
+        right={<div style={{ display: 'flex', gap: 6, background: C.ink3, padding: 4, borderRadius: 10, border: `1px solid ${C.line2}` }}>
+          <button onClick={() => setTab('build')} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12.5, background: tab === 'build' ? ACCENT : 'transparent', color: tab === 'build' ? ACCENT_TEXT : '#fff' }}>Build</button>
+          <button onClick={() => setTab('history')} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12.5, background: tab === 'history' ? ACCENT : 'transparent', color: tab === 'history' ? ACCENT_TEXT : '#fff' }}>History ({data.links.length})</button>
         </div>} />
       {tab === 'build' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 14, alignItems: 'start' }}>
-          <div style={{ ...card, padding: 22 }}>
-            <Field label="Campaign code" param="utm_campaign" hint="Only approved (active/deprecated) codes appear here.">
-              <select value={codeId} onChange={(e) => setCodeId(e.target.value)} style={sel}>
-                <option value="">Select a campaign code…</option>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 16, alignItems: 'start' }}>
+          <div className="cb-fade" style={{ ...card, padding: 24 }}>
+            <Step n={1} label="Campaign code" param="utm_campaign">
+              <select value={codeId} onChange={(e) => setCodeId(e.target.value)} style={inputStyle}>
+                <option value="">Select an approved code…</option>
                 {usable.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.camp_name} ({c.business_unit})</option>)}
               </select>
-            </Field>
-            <Field label="Link type" param="utm_content" hint="What kind of element the link sits on.">
+            </Step>
+            <Step n={2} label="Link type" param="utm_content" hint="What the link sits on">
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {CONTENT_TYPES.map(([k, v]) => <Chip key={k} on={content === k} onClick={() => setContent(k)}>{v}</Chip>)}
                 <Chip ghost on={content === '__c'} onClick={() => setContent('__c')}>+ Other</Chip>
               </div>
-              {content === '__c' && <input value={cc} onChange={(e) => setCc(e.target.value)} placeholder="custom content" className="mono" style={{ ...inputStyle, marginTop: 9 }} />}
-            </Field>
-            <Field label="Medium" param="utm_medium">
+              {content === '__c' && <input value={cc} onChange={(e) => setCc(e.target.value)} placeholder="custom content" className="mono" style={{ ...inputStyle, marginTop: 10 }} />}
+            </Step>
+            <Step n={3} label="Medium" param="utm_medium">
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {MEDIUMS.map(([k, v]) => <Chip key={k} on={medium === k} onClick={() => setMedium(k)}>{v}</Chip>)}
                 <Chip ghost on={medium === '__c'} onClick={() => setMedium('__c')}>+ Other</Chip>
               </div>
-              {medium === '__c' && <input value={mc} onChange={(e) => setMc(e.target.value)} placeholder="custom medium" className="mono" style={{ ...inputStyle, marginTop: 9 }} />}
-            </Field>
-            <Field label="Title" param="utm_term" hint="Describes this specific link."><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. spring-promo-hero" className="mono" style={inputStyle} /></Field>
-            <Field label="Destination site" hint="Pick the Cat site this link points to, then add the page path below.">
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {medium === '__c' && <input value={mc} onChange={(e) => setMc(e.target.value)} placeholder="custom medium" className="mono" style={{ ...inputStyle, marginTop: 10 }} />}
+            </Step>
+            <Step n={4} label="Title" param="utm_term" hint="Short name for this link">
+              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. spring-promo-hero" className="mono" style={inputStyle} />
+            </Step>
+            <Step n={5} label="Destination" param="base URL" hint="Pick a site, then add the path">
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
                 {CAT_SITES.map(([base, label]) => <Chip key={base} on={url.startsWith(base)} onClick={() => setUrl(base)}>{label}</Chip>)}
                 <Chip ghost on={!!url && !CAT_SITES.some(([base]) => url.startsWith(base))} onClick={() => setUrl('')}>+ Other</Chip>
               </div>
-            </Field>
-            <Field label="Destination link" param="base URL" hint="The full page URL. The site picker above fills the domain; add the rest of the path."><input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://rent.cat.com/your-page" style={inputStyle} /></Field>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 4 }}>
-              <Btn disabled={!ready} onClick={() => create(true)}>Create &amp; keep code for next link</Btn>
-              <Btn variant="ghost" disabled={!ready} onClick={() => create(false)}>Create one &amp; reset</Btn>
+              <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://rent.cat.com/your-page" style={inputStyle} />
+            </Step>
+            <div style={{ display: 'flex', gap: 10, marginTop: 6, paddingTop: 18, borderTop: `1px solid ${C.line}` }}>
+              <Btn disabled={!ready} onClick={() => create(true)} style={{ flex: 1 }}>Create &amp; keep code</Btn>
+              <Btn variant="ghost" disabled={!ready} onClick={() => create(false)} style={{ flex: 1 }}>Create &amp; reset</Btn>
             </div>
           </div>
-          <div style={{ ...card, padding: 20, position: 'sticky', top: 0 }}>
-            <div className="mono" style={{ fontSize: 10.5, letterSpacing: '.14em', textTransform: 'uppercase', color: C.fog2, marginBottom: 12 }}>Preview</div>
-            <div className="mono" style={{ fontSize: 12, lineHeight: 1.7, wordBreak: 'break-all', color: C.fog, minHeight: 60 }}>
+          <div className="cb-fade" style={{ ...card, padding: 22, position: 'sticky', top: 0, overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: -30, right: -22, width: 120, height: 120, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,205,17,.14), transparent 70%)', pointerEvents: 'none' }} />
+            <div className="mono" style={{ fontSize: 10.5, letterSpacing: '.16em', textTransform: 'uppercase', color: C.fog2, marginBottom: 13, position: 'relative' }}>Live preview</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 13, position: 'relative' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: ready ? C.good : C.fog2, boxShadow: ready ? '0 0 0 4px rgba(52,199,89,.16)' : 'none' }} />
+              <span style={{ fontSize: 12, color: ready ? C.good : C.fog2, fontWeight: 600 }}>{ready ? 'Ready to create' : 'Complete the steps to build'}</span>
+            </div>
+            <div className="mono" style={{ fontSize: 12, lineHeight: 1.75, wordBreak: 'break-all', color: C.fog, minHeight: 66, background: C.ink, borderRadius: 10, border: `1px solid ${C.line}`, padding: 14, position: 'relative' }}>
               {url || contentVal || campaign
                 ? <><span style={{ color: '#fff' }}>{url || 'https://your-link'}</span>{(url || '').includes('?') ? '&' : '?'}<Seg k="utm_content" v={contentVal} /><Seg k="utm_medium" v={mediumVal} /><Seg k="utm_campaign" v={campaign} /><Seg k="utm_term" v={title.trim()} /></>
-                : <span style={{ color: C.fog2, fontStyle: 'italic', fontFamily: 'Inter' }}>Fill the form to preview the tagged link.</span>}
+                : <span style={{ color: C.fog2, fontStyle: 'italic', fontFamily: 'Inter' }}>Your tagged link appears here as you build it.</span>}
             </div>
+            {campaign && <div style={{ marginTop: 13, fontSize: 11.5, color: C.fog2, position: 'relative' }}>Campaign: <span className="mono" style={{ color: ACCENT }}>{campaign}</span></div>}
           </div>
         </div>
       ) : (
@@ -1040,15 +1063,23 @@ function Users({ user }) {
 }
 
 /* ----------------- APP SHELL ----------------- */
-const NAV = [
-  ['dashboard', 'Dashboard', '◧', 'viewer'],
-  ['codes', 'Campaign codes', '⬢', 'viewer'],
-  ['approvals', 'Approvals', '✓', 'user'],
-  ['links', 'UTM links', '⛓', 'user'],
-  ['linksqr', 'Links & QR', '▦', 'user'],
-  ['taxonomy', 'Taxonomy', '⊞', 'viewer'],
-  ['audit', 'Audit log', '◷', 'approver'],
-  ['users', 'Users', '👤', 'admin'],
+const NAV_SECTIONS = [
+  ['', [
+    ['dashboard', 'Dashboard', '◧', 'viewer'],
+  ]],
+  ['Campaigns', [
+    ['codes', 'Campaign codes', '⬢', 'viewer'],
+    ['approvals', 'Approvals', '✓', 'user'],
+    ['taxonomy', 'Taxonomy', '⊞', 'viewer'],
+  ]],
+  ['Links & tracking', [
+    ['links', 'UTM links', '⛓', 'user'],
+    ['linksqr', 'Links & QR', '▦', 'user'],
+  ]],
+  ['Administration', [
+    ['audit', 'Audit log', '◷', 'approver'],
+    ['users', 'Users', '👤', 'admin'],
+  ]],
 ];
 export default function Portal() {
   const [user, setUser] = useState(undefined); // undefined=loading, null=signed out
@@ -1076,46 +1107,63 @@ export default function Portal() {
   if (user === undefined) return <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.fog2 }}>Loading…</div>;
   if (!user) return <><SignIn onSignedIn={setUser} /><ToastHost /></>;
 
-  const brand = view === 'links' ? BRANDS.cat : BRANDS.corporate;
-  const themeVars = { '--accent': brand.accent, '--accent-text': brand.accentText, '--accent-soft': brand.accentSoft, height: '100%', display: 'flex', transition: 'background .4s ease' };
+  const brand = BRANDS.corporate;
+  const themeVars = { '--accent': brand.accent, '--accent-text': brand.accentText, '--accent-soft': brand.accentSoft, height: '100%', display: 'flex' };
   const props = { user, data, reload, go: setView };
 
   async function signOut() { await api.signout().catch(() => {}); setUser(null); }
 
   return (
     <div style={themeVars}>
-      <aside style={{ width: 236, flexShrink: 0, background: C.ink2, borderRight: `1px solid ${C.line}`, display: 'flex', flexDirection: 'column', padding: '18px 14px', position: 'relative', zIndex: 2 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '2px 8px 18px' }}><BrandLogo brand={BRANDS.corporate} height={26} /></div>
-        <div style={{ fontSize: 10.5, color: C.fog2, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 600, padding: '0 8px 10px' }}>{APP_NAME}</div>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
-          {NAV.filter(([, , , min]) => can(user, min)).map(([k, label, icon, , ]) => {
-            const on = view === k; const locked = k === 'taxonomy' && !can(user, 'admin');
-            const badge = k === 'approvals' && data.pending.length > 0 ? data.pending.length : null;
+      <aside style={{ width: 244, flexShrink: 0, background: C.ink2, borderRight: `1px solid ${C.line}`, display: 'flex', flexDirection: 'column', padding: '18px 14px', position: 'relative', zIndex: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '2px 8px 16px' }}>
+          <BrandLogo brand={BRANDS.corporate} height={26} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px 14px' }}>
+          <span style={{ fontSize: 10.5, color: ACCENT, letterSpacing: '.16em', textTransform: 'uppercase', fontWeight: 700 }}>{APP_NAME}</span>
+          <span style={{ flex: 1, height: 1, background: C.line }} />
+        </div>
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, overflowY: 'auto' }}>
+          {NAV_SECTIONS.map(([section, items]) => {
+            const visible = items.filter(([, , , min]) => can(user, min));
+            if (!visible.length) return null;
             return (
-              <button key={k} onClick={() => setView(k)} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px', borderRadius: 9, border: 'none', cursor: 'pointer', textAlign: 'left', background: on ? ACCENT_SOFT : 'transparent', color: on ? '#fff' : C.fog, fontWeight: on ? 600 : 500, fontSize: 13.5 }}
-                onMouseEnter={(e) => { if (!on) e.currentTarget.style.background = C.ink3; }} onMouseLeave={(e) => { if (!on) e.currentTarget.style.background = 'transparent'; }}>
-                <span style={{ width: 18, textAlign: 'center', color: on ? ACCENT : C.fog2, fontSize: 14 }}>{icon}</span>
-                <span style={{ flex: 1 }}>{label}</span>
-                {badge && <span style={{ fontSize: 10.5, fontWeight: 700, minWidth: 18, height: 18, borderRadius: 9, background: C.warn, color: C.ink, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>{badge}</span>}
-                {k === 'links' && <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.red, boxShadow: on ? 'none' : '0 0 0 3px rgba(226,35,26,.18)' }} title="Cat website linking" />}
-                {locked && <span style={{ fontSize: 11, color: C.fog2 }}>🔒</span>}
-              </button>
+              <div key={section || 'main'} style={{ marginBottom: 8 }}>
+                {section && <div style={{ fontSize: 9.5, color: C.fog2, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 700, padding: '8px 12px 6px' }}>{section}</div>}
+                {visible.map(([k, label, icon]) => {
+                  const on = view === k; const locked = k === 'taxonomy' && !can(user, 'admin');
+                  const badge = k === 'approvals' && data.pending.length > 0 ? data.pending.length : null;
+                  return (
+                    <button key={k} onClick={() => setView(k)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '10px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left', background: on ? ACCENT_SOFT : 'transparent', color: on ? '#fff' : C.fog, fontWeight: on ? 600 : 500, fontSize: 13.5, transition: 'background .14s, color .14s' }}
+                      onMouseEnter={(e) => { if (!on) { e.currentTarget.style.background = C.ink3; e.currentTarget.style.color = '#fff'; } }}
+                      onMouseLeave={(e) => { if (!on) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.fog; } }}>
+                      {on && <span style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, borderRadius: 99, background: ACCENT }} />}
+                      <span style={{ width: 18, textAlign: 'center', color: on ? ACCENT : C.fog2, fontSize: 14 }}>{icon}</span>
+                      <span style={{ flex: 1 }}>{label}</span>
+                      {badge && <span style={{ fontSize: 10.5, fontWeight: 700, minWidth: 18, height: 18, borderRadius: 9, background: ACCENT, color: ACCENT_TEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>{badge}</span>}
+                      {locked && <span style={{ fontSize: 11, color: C.fog2 }}>🔒</span>}
+                    </button>
+                  );
+                })}
+              </div>
             );
           })}
         </nav>
         <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 14, marginTop: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 6px' }}>
-            <span style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0, background: ACCENT, color: ACCENT_TEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12 }}>{user.name.split(' ').map((s) => s[0]).join('').slice(0, 2)}</span>
+            <span style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: ACCENT, color: ACCENT_TEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12.5 }}>{user.name.split(' ').map((s) => s[0]).join('').slice(0, 2)}</span>
             <div style={{ flex: 1, minWidth: 0, lineHeight: 1.25 }}>
               <div style={{ fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name}</div>
               <div style={{ fontSize: 10.5, color: C.fog2, textTransform: 'capitalize' }}>{user.role}</div>
             </div>
           </div>
-          <button onClick={signOut} style={{ width: '100%', marginTop: 8, padding: 8, borderRadius: 8, background: 'transparent', border: `1px solid ${C.line2}`, color: C.fog, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Sign out</button>
+          <button onClick={signOut} style={{ width: '100%', marginTop: 8, padding: 8, borderRadius: 8, background: 'transparent', border: `1px solid ${C.line2}`, color: C.fog, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'border-color .14s, color .14s' }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.color = '#fff'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.line2; e.currentTarget.style.color = C.fog; }}>Sign out</button>
         </div>
       </aside>
       <main style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '26px 32px', position: 'relative' }}>
-        {view === 'links' && <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, background: `radial-gradient(900px 560px at 88% -12%, ${brand.glowA}, transparent 58%), radial-gradient(700px 480px at 0% 110%, ${brand.glowB}, transparent 55%)` }} />}
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, background: 'radial-gradient(900px 500px at 92% -16%, rgba(255,205,17,.06), transparent 60%)' }} />
         <div style={{ position: 'relative', zIndex: 1 }}>
           {view === 'dashboard' && <Dashboard {...props} />}
           {view === 'codes' && <CampaignCodes {...props} />}
