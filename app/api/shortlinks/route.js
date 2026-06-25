@@ -1,7 +1,7 @@
 import { sql, newId } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
 import { audit } from '@/lib/domain';
-import { shorten } from '@/lib/bitly';
+import { shorten, createQrForBitlink } from '@/lib/bitly';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,11 +33,24 @@ export async function POST(req) {
     return Response.json({ error: String(e.message || e) }, { status: 502 });
   }
 
+  // Create a Bitly-managed QR code for this link so the link and its QR live
+  // together in the Bitly account. If the plan doesn't allow API QR creation,
+  // fall back to an app-generated QR (qrSource: 'app') instead of failing.
+  let qrcodeId = null, qrSvg = null, qrSource = 'app';
+  try {
+    const qr = await createQrForBitlink(result.bitlyId, title);
+    qrcodeId = qr.qrcodeId;
+    qrSvg = qr.qrSvg;
+    qrSource = 'bitly';
+  } catch {
+    qrcodeId = null; qrSvg = null; qrSource = 'app';
+  }
+
   const id = newId('s');
   await sql`
-    INSERT INTO short_links (id, link_id, long_url, short_url, bitly_id, title, created_by)
-    VALUES (${id}, ${linkId || null}, ${longUrl}, ${result.shortUrl}, ${result.bitlyId}, ${title || null}, ${auth.user.name})
+    INSERT INTO short_links (id, link_id, long_url, short_url, bitly_id, qrcode_id, qr_svg, title, created_by)
+    VALUES (${id}, ${linkId || null}, ${longUrl}, ${result.shortUrl}, ${result.bitlyId}, ${qrcodeId}, ${qrSvg}, ${title || null}, ${auth.user.name})
   `;
-  await audit({ actor: auth.user.name, action: 'shortlink.created', entity: 'short_link', entityId: id, after: { short: result.shortUrl } });
-  return Response.json({ id, shortUrl: result.shortUrl, bitlyId: result.bitlyId, longUrl, title: title || null });
+  await audit({ actor: auth.user.name, action: 'shortlink.created', entity: 'short_link', entityId: id, after: { short: result.shortUrl, qr: qrSource } });
+  return Response.json({ id, shortUrl: result.shortUrl, bitlyId: result.bitlyId, longUrl, title: title || null, qrcodeId, qrSvg, qrSource });
 }

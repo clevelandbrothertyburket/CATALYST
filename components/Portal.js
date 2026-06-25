@@ -698,7 +698,10 @@ function LinksQR({ user, data, reload }) {
           <div className="mono" style={{ fontSize: 10.5, letterSpacing: '.14em', textTransform: 'uppercase', color: C.fog2, marginBottom: 14 }}>Result</div>
           {result ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-              <QR value={result.shortUrl} size={170} label={result.bitlyId?.replace('bit.ly/', '') || 'code'} />
+              <QR value={result.shortUrl} svgMarkup={result.qrSvg} size={170} label={result.bitlyId?.replace('bit.ly/', '') || 'code'} />
+              <div style={{ fontSize: 11, color: result.qrSource === 'bitly' ? C.good : C.fog2 }}>
+                {result.qrSource === 'bitly' ? 'Bitly QR code · saved to your Bitly account' : 'App-generated QR (Bitly QR API unavailable on this plan)'}
+              </div>
               <div style={{ width: '100%', textAlign: 'center' }}>
                 <a href={result.shortUrl} target="_blank" rel="noreferrer" className="mono" style={{ fontSize: 14, fontWeight: 600, color: ACCENT, wordBreak: 'break-all' }}>{result.shortUrl}</a>
                 <button onClick={() => { navigator.clipboard?.writeText(result.shortUrl); toast('Copied'); }} style={{ display: 'block', margin: '10px auto 0', cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: '7px 14px', borderRadius: 8, background: C.ink3, border: `1px solid ${C.line2}`, color: C.white }}>Copy short link</button>
@@ -737,7 +740,7 @@ function LinksQR({ user, data, reload }) {
                   <details style={{ flexShrink: 0 }}>
                     <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 600, color: C.fog, listStyle: 'none' }}>QR</summary>
                     <div style={{ position: 'absolute', marginTop: 8, marginLeft: -150, zIndex: 30, ...card, padding: 14, boxShadow: '0 12px 30px rgba(0,0,0,.5)' }}>
-                      <QR value={s.short_url} size={150} label={(s.bitly_id || '').replace('bit.ly/', '') || 'code'} />
+                      <QR value={s.short_url} svgMarkup={s.qr_svg} size={150} label={(s.bitly_id || '').replace('bit.ly/', '') || 'code'} />
                     </div>
                   </details>
                 </div>

@@ -1,3 +1,17 @@
+DO $catalyst$
+BEGIN
+-- ============================================================
+--  CATALYST — complete go-live database setup (single paste)
+--  Run this once in Neon's SQL Editor (Vercel > Storage > your DB > Query).
+--  Creates all tables, loads taxonomy + campaign codes, and creates the
+--  admin login below. Safe to re-run (idempotent).
+--
+--    Sign in:  tburket@clevelandbrothers.com
+--    Password: Trackers08!!
+--  (The password is stored only as the bcrypt hash below, never in plaintext.)
+-- ============================================================
+
+-- ============ SCHEMA ============
 -- Cleveland Brothers Campaign Code Portal — schema
 -- Postgres (Neon). Run via db/setup.mjs.
 
@@ -110,10 +124,13 @@ CREATE TABLE IF NOT EXISTS short_links (
   long_url     TEXT NOT NULL,                     -- the full tagged URL sent to Bitly
   short_url    TEXT NOT NULL,                     -- bit.ly/... returned
   bitly_id     TEXT,                              -- Bitly's own id (e.g. bit.ly/abc123)
-  qrcode_id    TEXT,                              -- Bitly QR code id (qr lives in the Bitly account)
-  qr_svg       TEXT,                              -- cached Bitly QR image (SVG) for in-app display
   title        TEXT,
   created_by   TEXT NOT NULL,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_short_link_id ON short_links(link_id);
+
+
+
+END
+$catalyst$;
