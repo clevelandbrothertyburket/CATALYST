@@ -21,7 +21,7 @@ function ToastHost() {
   if (!msg) return null;
   const err = msg.startsWith('!');
   return (
-    <div style={{ position: 'fixed', left: '50%', bottom: 26, transform: 'translateX(-50%)', zIndex: 200, background: '#fff', color: C.ink, fontWeight: 600, fontSize: 13.5, padding: '11px 20px', borderRadius: 99, boxShadow: '0 12px 40px rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', gap: 9 }}>
+    <div style={{ position: 'fixed', left: '50%', bottom: 26, transform: 'translateX(-50%)', zIndex: 200, background: C.white, color: C.ink, fontWeight: 600, fontSize: 13.5, padding: '11px 20px', borderRadius: 99, boxShadow: '0 12px 40px rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', gap: 9 }}>
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: err ? C.warn : C.good }} />
       {err ? msg.slice(1) : msg}
     </div>
@@ -144,8 +144,39 @@ function timeAgo(s) {
   return `${Math.floor(d / 86400)}d ago`;
 }
 
+function TrendChart({ points, height = 92 }) {
+  const w = 100;
+  const max = Math.max(1, ...points.map((p) => p.value));
+  const step = points.length > 1 ? w / (points.length - 1) : w;
+  const coords = points.map((p, i) => [i * step, height - (p.value / max) * (height - 12) - 6]);
+  const line = coords.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const area = `${line} L${w},${height} L0,${height} Z`;
+  return (
+    <svg viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" style={{ width: '100%', height, display: 'block' }}>
+      <defs>
+        <linearGradient id="cbtrend" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#FFCD11" stopOpacity="0.32" />
+          <stop offset="100%" stopColor="#FFCD11" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#cbtrend)" />
+      <path d={line} fill="none" stroke="#FFCD11" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      {coords.map(([x, y], i) => <circle key={i} cx={x} cy={y} r="1.7" fill="#FFCD11" vectorEffect="non-scaling-stroke" />)}
+    </svg>
+  );
+}
+
 function Dashboard({ user, go, data }) {
   const { codes, links, pending } = data;
+  const weekly = useMemo(() => {
+    const now = Date.now(), wk = 7 * 24 * 3600 * 1000, out = [];
+    for (let i = 7; i >= 0; i--) {
+      const start = now - (i + 1) * wk, end = now - i * wk;
+      out.push({ value: links.filter((l) => { const t = new Date(l.created_at).getTime(); return t > start && t <= end; }).length });
+    }
+    return out;
+  }, [links]);
+  const weekTotal = weekly.reduce((s, b) => s + b.value, 0);
   const active = codes.filter((c) => c.status === 'active').length;
   const byBU = useMemo(() => {
     const m = {}; codes.forEach((c) => (m[c.business_unit] = (m[c.business_unit] || 0) + 1));
@@ -184,7 +215,7 @@ function Dashboard({ user, go, data }) {
             {can(user, 'user') && (
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => go('links')} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, padding: '8px 14px', borderRadius: 9, background: ACCENT, color: ACCENT_TEXT, border: 'none' }}>⛓ Build a link</button>
-                <button onClick={() => go('codes')} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, padding: '8px 14px', borderRadius: 9, background: 'transparent', color: '#fff', border: `1px solid ${C.line2}` }}>⬢ Browse codes</button>
+                <button onClick={() => go('codes')} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, padding: '8px 14px', borderRadius: 9, background: 'transparent', color: C.white, border: `1px solid ${C.line2}` }}>⬢ Browse codes</button>
               </div>
             )}
           </div>
@@ -195,8 +226,16 @@ function Dashboard({ user, go, data }) {
       <div style={{ display: 'flex', gap: 13, marginBottom: 14, flexWrap: 'wrap' }}>
         <StatCard label="Campaign codes" value={codes.length} sub={`${active} active`} icon="⬢" accent="#FFCD11" onClick={() => go('codes')} delay={0} />
         <StatCard label="Pending approval" value={pending.length} sub="In the review queue" icon="✓" accent="#FFB020" onClick={() => go('approvals')} delay={70} />
-        <StatCard label="UTM links built" value={links.length} sub="Logged to history" icon="⛓" accent="#FFFFFF" onClick={() => go('links')} delay={140} />
+        <StatCard label="UTM links built" value={links.length} sub="Logged to history" icon="⛓" accent="#8A8A93" onClick={() => go('links')} delay={140} />
         <StatCard label="Business units" value={new Set(codes.map((c) => c.bu)).size} sub="Across the taxonomy" icon="⊞" accent="#34C759" onClick={() => go('taxonomy')} delay={210} />
+      </div>
+
+      <div className="cb-rise cb-hover" style={{ ...card, padding: 20, marginBottom: 14, animationDelay: '90ms' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
+          <h3 style={{ fontFamily: 'Archivo', fontWeight: 700, fontSize: 15 }}>Links built · last 8 weeks</h3>
+          <span style={{ fontSize: 12.5, color: C.fog }}><b style={{ color: C.white, fontFamily: 'Archivo', fontSize: 16 }}>{weekTotal}</b> in this window</span>
+        </div>
+        <TrendChart points={weekly} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -249,7 +288,7 @@ function Dashboard({ user, go, data }) {
             : <div style={{ display: 'flex', flexDirection: 'column' }}>
               {activity.map((a, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 0', borderBottom: i < activity.length - 1 ? `1px solid ${C.line}` : 'none' }}>
-                  <span style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, background: a.kind === 'link' ? 'rgba(255,255,255,.1)' : 'rgba(255,205,17,.14)', color: a.kind === 'link' ? '#fff' : '#FFCD11' }}>{a.kind === 'link' ? '⛓' : '⬢'}</span>
+                  <span style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, background: a.kind === 'link' ? 'rgba(255,255,255,.1)' : 'rgba(255,205,17,.14)', color: a.kind === 'link' ? C.white : '#FFCD11' }}>{a.kind === 'link' ? '⛓' : '⬢'}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12.5, color: C.white, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.kind === 'link' ? 'Link built' : 'Code'} · {a.label}</div>
                     <div className="mono" style={{ fontSize: 10.5, color: C.fog2 }}>{a.code} · {a.who}</div>
@@ -447,7 +486,7 @@ function Approvals({ user, data, reload }) {
     <div>
       <PageHead title="Approval queue" sub={isApprover ? 'Review and decide on proposed codes.' : 'Track the status of codes you’ve requested.'}
         right={<div style={{ display: 'flex', gap: 6, background: C.ink3, padding: 4, borderRadius: 10, border: `1px solid ${C.line2}` }}>
-          {tabs.map(([k, v]) => <button key={k} onClick={() => setTab(k)} style={{ padding: '7px 13px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12.5, background: tab === k ? ACCENT : 'transparent', color: tab === k ? ACCENT_TEXT : '#fff' }}>{v}</button>)}
+          {tabs.map(([k, v]) => <button key={k} onClick={() => setTab(k)} style={{ padding: '7px 13px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12.5, background: tab === k ? ACCENT : 'transparent', color: tab === k ? ACCENT_TEXT : C.white }}>{v}</button>)}
         </div>} />
       <div style={{ ...card, overflow: 'hidden' }}>
         {list.length === 0
@@ -518,9 +557,9 @@ const cleanSlug = (s) => String(s == null ? '' : s)
   .replace(/[^a-z0-9._-]/g, '')
   .replace(/-+/g, '-');
 function Chip({ children, on, ghost, onClick }) {
-  return <button onClick={onClick} style={{ cursor: 'pointer', padding: '8px 14px', borderRadius: 10, fontSize: 12.5, fontWeight: on ? 600 : 500, background: on ? ACCENT : C.ink3, color: on ? ACCENT_TEXT : '#fff', border: `1px solid ${on ? ACCENT : C.line2}`, borderStyle: ghost && !on ? 'dashed' : 'solid' }}>{children}</button>;
+  return <button onClick={onClick} style={{ cursor: 'pointer', padding: '8px 14px', borderRadius: 10, fontSize: 12.5, fontWeight: on ? 600 : 500, background: on ? ACCENT : C.ink3, color: on ? ACCENT_TEXT : C.white, border: `1px solid ${on ? ACCENT : C.line2}`, borderStyle: ghost && !on ? 'dashed' : 'solid' }}>{children}</button>;
 }
-function Seg({ k, v }) { return <span><span style={{ color: ACCENT }}>{k}=</span><span style={{ color: '#fff' }}>{v || '…'}</span><span style={{ color: ACCENT }}>&</span></span>; }
+function Seg({ k, v }) { return <span><span style={{ color: ACCENT }}>{k}=</span><span style={{ color: C.white }}>{v || '…'}</span><span style={{ color: ACCENT }}>&</span></span>; }
 // Quick-pick destination sites for UTM links. Selecting one fills the base of
 // the destination URL; the user then appends the page path.
 const CAT_SITES = [
@@ -541,7 +580,7 @@ function Step({ n, label, param, hint, children }) {
     <div style={{ marginBottom: 18 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 9 }}>
         <span style={{ width: 21, height: 21, borderRadius: 6, flexShrink: 0, background: ACCENT_SOFT, color: ACCENT, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{n}</span>
-        <span style={{ fontSize: 12.5, fontWeight: 600, color: '#fff' }}>{label}</span>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: C.white }}>{label}</span>
         {param && <span className="mono" style={{ fontSize: 10.5, color: C.fog2 }}>{param}</span>}
         {hint && <span style={{ fontSize: 11, color: C.fog2, marginLeft: 'auto', textAlign: 'right' }}>{hint}</span>}
       </div>
@@ -617,8 +656,8 @@ function UtmLinks({ user, data, reload }) {
     <div>
       <PageHead title="UTM links" sub="Build a tracked link from an approved campaign code — tagged with UTM parameters so every click is attributed."
         right={<div style={{ display: 'flex', gap: 6, background: C.ink3, padding: 4, borderRadius: 10, border: `1px solid ${C.line2}` }}>
-          <button onClick={() => setTab('build')} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12.5, background: tab === 'build' ? ACCENT : 'transparent', color: tab === 'build' ? ACCENT_TEXT : '#fff' }}>Build</button>
-          <button onClick={() => setTab('history')} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12.5, background: tab === 'history' ? ACCENT : 'transparent', color: tab === 'history' ? ACCENT_TEXT : '#fff' }}>History ({data.links.length})</button>
+          <button onClick={() => setTab('build')} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12.5, background: tab === 'build' ? ACCENT : 'transparent', color: tab === 'build' ? ACCENT_TEXT : C.white }}>Build</button>
+          <button onClick={() => setTab('history')} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12.5, background: tab === 'history' ? ACCENT : 'transparent', color: tab === 'history' ? ACCENT_TEXT : C.white }}>History ({data.links.length})</button>
         </div>} />
       {tab === 'build' ? (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 16, alignItems: 'start' }}>
@@ -676,7 +715,7 @@ function UtmLinks({ user, data, reload }) {
             </div>
             <div className="mono" style={{ fontSize: 12, lineHeight: 1.75, wordBreak: 'break-all', color: C.fog, minHeight: 66, background: C.ink, borderRadius: 10, border: `1px solid ${C.line}`, padding: 14, position: 'relative' }}>
               {url || contentVal || campaign
-                ? <><span style={{ color: '#fff' }}>{url || 'https://your-link'}</span>{(url || '').includes('?') ? '&' : '?'}<Seg k="utm_content" v={contentVal} /><Seg k="utm_medium" v={mediumVal} /><Seg k="utm_campaign" v={campaign} /><Seg k="utm_term" v={title.trim()} /></>
+                ? <><span style={{ color: C.white }}>{url || 'https://your-link'}</span>{(url || '').includes('?') ? '&' : '?'}<Seg k="utm_content" v={contentVal} /><Seg k="utm_medium" v={mediumVal} /><Seg k="utm_campaign" v={campaign} /><Seg k="utm_term" v={title.trim()} /></>
                 : <span style={{ color: C.fog2, fontStyle: 'italic', fontFamily: 'Inter' }}>Your tagged link appears here as you build it.</span>}
             </div>
             {campaign && <div style={{ marginTop: 13, fontSize: 11.5, color: C.fog2, position: 'relative' }}>Campaign: <span className="mono" style={{ color: ACCENT }}>{campaign}</span></div>}
@@ -756,7 +795,7 @@ function Taxonomy({ user, data, reload }) {
     <div>
       <PageHead title="Taxonomy" sub="Manage the controlled vocabulary. Codes are built from these values."
         right={<div style={{ display: 'flex', gap: 6, background: C.ink3, padding: 4, borderRadius: 10, border: `1px solid ${C.line2}` }}>
-          {tabs.map(([k, v]) => <button key={k} onClick={() => setTab(k)} style={{ padding: '7px 13px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12.5, background: tab === k ? ACCENT : 'transparent', color: tab === k ? ACCENT_TEXT : '#fff' }}>{v}</button>)}
+          {tabs.map(([k, v]) => <button key={k} onClick={() => setTab(k)} style={{ padding: '7px 13px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12.5, background: tab === k ? ACCENT : 'transparent', color: tab === k ? ACCENT_TEXT : C.white }}>{v}</button>)}
         </div>} />
       {tab === 'bu' && <TaxoPane title="Business unit" addFields={[['code', 'Code', 1, 70], ['name', 'Name', 40, 220]]} onAdd={(vals) => add({ type: 'bu', code: vals.code, name: vals.name })}
         list={Object.entries(t.businessUnits).map(([k, v]) => ({ code: k, name: v, meta: `${Object.keys(t.initiatives[k] || {}).length} initiatives` }))} />}
@@ -905,8 +944,8 @@ function LinksQR({ user, data, reload }) {
         <div style={{ fontSize: 12.5, color: C.fog }}>
           {loading ? 'Checking Bitly connection…'
             : bitly?.connected
-              ? <><b style={{ color: '#fff', fontWeight: 600 }}>Bitly connected.</b>{bitly.account ? ` Account: ${bitly.account.login}.` : ''} The whole team shortens through this one account.</>
-              : <><b style={{ color: '#fff', fontWeight: 600 }}>Bitly not connected.</b> An admin needs to set <span className="mono" style={{ color: C.warn }}>BITLY_TOKEN</span> in the server environment.</>}
+              ? <><b style={{ color: C.white, fontWeight: 600 }}>Bitly connected.</b>{bitly.account ? ` Account: ${bitly.account.login}.` : ''} The whole team shortens through this one account.</>
+              : <><b style={{ color: C.white, fontWeight: 600 }}>Bitly not connected.</b> An admin needs to set <span className="mono" style={{ color: C.warn }}>BITLY_TOKEN</span> in the server environment.</>}
         </div>
       </div>
 
@@ -1151,7 +1190,7 @@ function Users({ user }) {
       {confirmDel && (
         <Modal title="Remove user" sub="This permanently deletes the account." onClose={() => setConfirmDel(null)} width={420}>
           <p style={{ fontSize: 13.5, color: C.fog, lineHeight: 1.6, marginBottom: 18 }}>
-            Permanently delete <b style={{ color: '#fff' }}>{confirmDel.name}</b> (<span className="mono">{confirmDel.email}</span>)? They'll be cleared from the system immediately and signed out. This can't be undone.
+            Permanently delete <b style={{ color: C.white }}>{confirmDel.name}</b> (<span className="mono">{confirmDel.email}</span>)? They'll be cleared from the system immediately and signed out. This can't be undone.
           </p>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 9 }}>
             <Btn variant="ghost" onClick={() => setConfirmDel(null)}>Cancel</Btn>
@@ -1182,13 +1221,75 @@ const NAV_SECTIONS = [
     ['users', 'Users', '👤', 'admin'],
   ]],
 ];
+
+/* ----------------- COMMAND PALETTE (⌘K) ----------------- */
+function CommandPalette({ data, go, user, onClose }) {
+  const [q, setQ] = useState('');
+  const [sel, setSel] = useState(0);
+  const items = useMemo(() => {
+    const list = [];
+    NAV_SECTIONS.forEach(([section, navs]) => navs.forEach(([k, label, icon, min]) => {
+      if (can(user, min)) list.push({ type: 'Page', label, icon, sub: section || 'Go to', action: () => go(k) });
+    }));
+    (data.codes || []).forEach((c) => list.push({ type: 'Code', label: c.code, sub: c.camp_name, icon: '⬢', action: () => go('codes') }));
+    (data.links || []).forEach((l) => list.push({ type: 'Link', label: l.title, sub: `${l.code} · ${l.medium}`, icon: '⛓', action: () => go('links') }));
+    return list;
+  }, [data, user, go]);
+  const filtered = useMemo(() => {
+    if (!q.trim()) return items.filter((i) => i.type === 'Page');
+    const ql = q.toLowerCase();
+    return items.filter((i) => `${i.label} ${i.sub || ''} ${i.type}`.toLowerCase().includes(ql)).slice(0, 40);
+  }, [items, q]);
+  useEffect(() => { setSel(0); }, [q]);
+  function onKey(e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(s + 1, filtered.length - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)); }
+    else if (e.key === 'Enter') { e.preventDefault(); const it = filtered[sel]; if (it) { it.action(); onClose(); } }
+    else if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+  }
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '12vh' }}>
+      <div onClick={(e) => e.stopPropagation()} className="cb-pop" style={{ width: 580, maxWidth: '92vw', ...card, overflow: 'hidden', boxShadow: '0 24px 70px rgba(0,0,0,.55)' }}>
+        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onKey} placeholder="Search pages, campaign codes, links…"
+          style={{ width: '100%', fontSize: 15, padding: '16px 18px', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.line}`, color: C.white, outline: 'none' }} />
+        <div style={{ maxHeight: 380, overflowY: 'auto', padding: 6 }}>
+          {filtered.length === 0
+            ? <div style={{ padding: 30, textAlign: 'center', color: C.fog2, fontSize: 13 }}>No matches for “{q}”.</div>
+            : filtered.map((it, i) => (
+              <div key={i} onMouseEnter={() => setSel(i)} onClick={() => { it.action(); onClose(); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 9, cursor: 'pointer', background: i === sel ? ACCENT_SOFT : 'transparent' }}>
+                <span style={{ width: 27, height: 27, borderRadius: 7, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.ink3, color: i === sel ? ACCENT : C.fog2, fontSize: 13 }}>{it.icon}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 13.5, fontWeight: 500, color: C.white, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.label}</span>
+                  {it.sub && <span style={{ display: 'block', fontSize: 11.5, color: C.fog2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.sub}</span>}
+                </span>
+                <span className="mono" style={{ fontSize: 10, color: C.fog2, textTransform: 'uppercase', letterSpacing: '.06em', flexShrink: 0 }}>{it.type}</span>
+              </div>
+            ))}
+        </div>
+        <div style={{ padding: '9px 16px', borderTop: `1px solid ${C.line}`, fontSize: 11, color: C.fog2, display: 'flex', gap: 16 }}>
+          <span><b style={{ color: C.fog }}>↑↓</b> navigate</span><span><b style={{ color: C.fog }}>↵</b> open</span><span><b style={{ color: C.fog }}>esc</b> close</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 export default function Portal() {
   const [user, setUser] = useState(undefined); // undefined=loading, null=signed out
   const [view, setView] = useState('dashboard');
   const [data, setData] = useState({ codes: [], links: [], requests: [], pending: [], taxonomy: { departments: {}, businessUnits: {}, initiatives: {}, campaigns: {} } });
   const [loading, setLoading] = useState(false);
+  const [theme, setTheme] = useState('dark');
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   useEffect(() => { api.session().then((d) => setUser(d.user)).catch(() => setUser(null)); }, []);
+  useEffect(() => { try { const t = localStorage.getItem('cb-theme'); if (t === 'light' || t === 'dark') setTheme(t); } catch {} }, []);
+  useEffect(() => { document.documentElement.setAttribute('data-theme', theme); try { localStorage.setItem('cb-theme', theme); } catch {} }, [theme]);
+  useEffect(() => {
+    const onKey = (e) => { if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); setPaletteOpen((o) => !o); } };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -1224,6 +1325,12 @@ export default function Portal() {
           <span style={{ fontSize: 10.5, color: ACCENT, letterSpacing: '.16em', textTransform: 'uppercase', fontWeight: 700 }}>{APP_NAME}</span>
           <span style={{ flex: 1, height: 1, background: C.line }} />
         </div>
+        <button onClick={() => setPaletteOpen(true)} title="Search (Cmd/Ctrl + K)" style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '9px 12px', marginBottom: 10, borderRadius: 10, cursor: 'pointer', background: C.ink3, border: `1px solid ${C.line2}`, color: C.fog, fontSize: 13, transition: 'border-color .14s' }}
+          onMouseEnter={(e) => (e.currentTarget.style.borderColor = ACCENT)} onMouseLeave={(e) => (e.currentTarget.style.borderColor = C.line2)}>
+          <span style={{ color: C.fog2 }}>⌕</span>
+          <span style={{ flex: 1, textAlign: 'left' }}>Search…</span>
+          <span className="mono" style={{ fontSize: 10.5, color: C.fog2, border: `1px solid ${C.line2}`, borderRadius: 5, padding: '1px 5px' }}>⌘K</span>
+        </button>
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, overflowY: 'auto' }}>
           {NAV_SECTIONS.map(([section, items]) => {
             const visible = items.filter(([, , , min]) => can(user, min));
@@ -1235,8 +1342,8 @@ export default function Portal() {
                   const on = view === k; const locked = k === 'taxonomy' && !can(user, 'admin');
                   const badge = k === 'approvals' && data.pending.length > 0 ? data.pending.length : null;
                   return (
-                    <button key={k} onClick={() => setView(k)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '10px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left', background: on ? ACCENT_SOFT : 'transparent', color: on ? '#fff' : C.fog, fontWeight: on ? 600 : 500, fontSize: 13.5, transition: 'background .14s, color .14s' }}
-                      onMouseEnter={(e) => { if (!on) { e.currentTarget.style.background = C.ink3; e.currentTarget.style.color = '#fff'; } }}
+                    <button key={k} onClick={() => setView(k)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '10px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left', background: on ? ACCENT_SOFT : 'transparent', color: on ? C.white : C.fog, fontWeight: on ? 600 : 500, fontSize: 13.5, transition: 'background .14s, color .14s' }}
+                      onMouseEnter={(e) => { if (!on) { e.currentTarget.style.background = C.ink3; e.currentTarget.style.color = C.white; } }}
                       onMouseLeave={(e) => { if (!on) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.fog; } }}>
                       {on && <span style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, borderRadius: 99, background: ACCENT }} />}
                       <span style={{ width: 18, textAlign: 'center', color: on ? ACCENT : C.fog2, fontSize: 14 }}>{icon}</span>
@@ -1257,9 +1364,13 @@ export default function Portal() {
               <div style={{ fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name}</div>
               <div style={{ fontSize: 10.5, color: C.fog2, textTransform: 'capitalize' }}>{user.role}</div>
             </div>
+            <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, cursor: 'pointer', background: C.ink3, border: `1px solid ${C.line2}`, color: C.fog, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'border-color .14s, color .14s' }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.color = C.white; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.line2; e.currentTarget.style.color = C.fog; }}>{theme === 'dark' ? '☀' : '☾'}</button>
           </div>
           <button onClick={signOut} style={{ width: '100%', marginTop: 8, padding: 8, borderRadius: 8, background: 'transparent', border: `1px solid ${C.line2}`, color: C.fog, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'border-color .14s, color .14s' }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.color = '#fff'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.color = C.white; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.line2; e.currentTarget.style.color = C.fog; }}>Sign out</button>
         </div>
       </aside>
@@ -1276,6 +1387,7 @@ export default function Portal() {
           {view === 'users' && <Users {...props} />}
         </div>
       </main>
+      {paletteOpen && <CommandPalette data={data} go={setView} user={user} onClose={() => setPaletteOpen(false)} />}
       <ToastHost />
     </div>
   );

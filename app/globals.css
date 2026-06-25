@@ -3,22 +3,31 @@
   --cat-yellow:#FFCD11;
   --ink:#0A0A0B;--ink-2:#161618;--ink-3:#1F1F23;--ink-4:#26262B;
   --line:#2C2C31;--line-2:#3A3A41;
-  --white:#fff;--fog:#A8A8B0;--fog-2:#6E6E78;
+  --text:#ffffff;--white:#ffffff;--fog:#A8A8B0;--fog-2:#6E6E78;
   --good:#34C759;--warn:#FFB020;
   --radius:14px;--radius-sm:10px;
-  /* theme accent — flipped by the app shell per view */
   --accent:var(--cat-yellow);
   --accent-text:#0A0A0B;
   --accent-soft:rgba(255,205,17,.14);
+  color-scheme:dark;
+}
+/* Light theme — set data-theme="light" on <html> */
+[data-theme="light"]{
+  --ink:#f4f4f5;--ink-2:#ffffff;--ink-3:#eef0f2;--ink-4:#e4e4e7;
+  --line:#e6e6e9;--line-2:#d6d6da;
+  --text:#0a0a0b;--white:#0a0a0b;--fog:#52525b;--fog-2:#8a8a93;
+  --accent-soft:rgba(255,205,17,.22);
+  color-scheme:light;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{
   font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
-  background:var(--ink);color:var(--white);-webkit-font-smoothing:antialiased;line-height:1.45;
+  background:var(--ink);color:var(--text);-webkit-font-smoothing:antialiased;line-height:1.45;
+  transition:background .25s ease,color .25s ease;
 }
 input,select,button,textarea{font-family:inherit}
-select option{background:var(--ink-3);color:#fff}
+select option{background:var(--ink-3);color:var(--text)}
 a{color:inherit}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:99px}

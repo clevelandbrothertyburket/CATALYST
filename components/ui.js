@@ -2,8 +2,10 @@
 import { useState, useEffect } from 'react';
 
 export const C = {
-  red: '#E2231A', catYellow: '#FFCD11', ink: '#0A0A0B', ink2: '#161618', ink3: '#1F1F23', ink4: '#26262B',
-  line: '#2C2C31', line2: '#3A3A41', white: '#fff', fog: '#A8A8B0', fog2: '#6E6E78', good: '#34C759', warn: '#FFB020',
+  red: 'var(--rental-red)', catYellow: 'var(--cat-yellow)',
+  ink: 'var(--ink)', ink2: 'var(--ink-2)', ink3: 'var(--ink-3)', ink4: 'var(--ink-4)',
+  line: 'var(--line)', line2: 'var(--line-2)',
+  white: 'var(--text)', fog: 'var(--fog)', fog2: 'var(--fog-2)', good: '#34C759', warn: '#FFB020',
 };
 
 export const BRANDS = {
@@ -34,7 +36,7 @@ export function BrandLogo({ brand, height = 30 }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [brand.logo]);
   if (failed)
-    return <span style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: height * 0.46, color: '#fff', whiteSpace: 'nowrap' }}>{brand.logoFallback}</span>;
+    return <span style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: height * 0.46, color: 'var(--text)', whiteSpace: 'nowrap' }}>{brand.logoFallback}</span>;
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={brand.logo} alt={brand.name} onError={() => setFailed(true)} style={{ height, width: 'auto', maxWidth: 190, objectFit: 'contain', display: 'block' }} />;
 }
