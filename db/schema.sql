@@ -103,15 +103,15 @@ CREATE TABLE IF NOT EXISTS audit_log (
 CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_log(entity, entity_id);
 CREATE INDEX IF NOT EXISTS idx_audit_time ON audit_log(created_at DESC);
 
--- ---------- short links + QR (Bitly) ----------
+-- ---------- short links + QR (legacy, unused) ----------
 CREATE TABLE IF NOT EXISTS short_links (
   id           TEXT PRIMARY KEY,
   link_id      TEXT,                              -- optional FK to links.id (the UTM it shortens)
-  long_url     TEXT NOT NULL,                     -- the full tagged URL sent to Bitly
-  short_url    TEXT NOT NULL,                     -- bit.ly/... returned
-  bitly_id     TEXT,                              -- Bitly's own id (e.g. bit.ly/abc123)
-  qrcode_id    TEXT,                              -- Bitly QR code id (qr lives in the Bitly account)
-  qr_svg       TEXT,                              -- cached Bitly QR image (SVG) for in-app display
+  long_url     TEXT NOT NULL,                     -- the full tagged URL
+  short_url    TEXT NOT NULL,                     -- short url returned
+  bitly_id     TEXT,                              -- external short id
+  qrcode_id    TEXT,                              -- external QR code id
+  qr_svg       TEXT,                              -- cached QR image (SVG)
   title        TEXT,
   created_by   TEXT NOT NULL,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()

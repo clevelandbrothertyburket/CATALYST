@@ -4,14 +4,14 @@ import QRCode from 'qrcode';
 import { C } from './ui';
 
 // Renders a QR as an inline SVG, with download buttons.
-// If `svgMarkup` is provided (e.g. Bitly's own QR image), it is rendered as-is
+// If `svgMarkup` is provided (a pre-rendered SVG), it is rendered as-is
 // instead of generating one locally from `value`.
 export function QR({ value, size = 160, label, svgMarkup }) {
   const [svg, setSvg] = useState(svgMarkup || '');
   const ref = useRef(null);
 
   useEffect(() => {
-    if (svgMarkup) { setSvg(svgMarkup); return; }   // Bitly-supplied QR
+    if (svgMarkup) { setSvg(svgMarkup); return; }   // pre-supplied SVG
     if (!value) { setSvg(''); return; }
     QRCode.toString(value, {
       type: 'svg', margin: 1, errorCorrectionLevel: 'M',
@@ -27,7 +27,7 @@ export function QR({ value, size = 160, label, svgMarkup }) {
     a.click();
   }
   async function downloadPng() {
-    // For a Bitly-supplied SVG, rasterize the SVG to PNG via canvas.
+    // For a pre-supplied SVG, rasterize the SVG to PNG via canvas.
     if (svgMarkup && svg) {
       const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
       const url = URL.createObjectURL(blob);

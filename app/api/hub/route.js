@@ -37,6 +37,15 @@ export async function POST(req) {
   try { new URL(longUrl); } catch { return Response.json({ error: 'Enter a valid URL' }, { status: 400 }); }
   const title = (b.title || '').trim() || null;
 
+  // Duplicate URL guard — never create two short links / QR codes for the same URL.
+  const dupe = await sql`SELECT id, slug FROM cb_short_links WHERE long_url = ${longUrl} LIMIT 1`;
+  if (dupe.length) {
+    return Response.json({
+      error: `A short link for that URL already exists: /s/${dupe[0].slug}. Reuse it instead of creating a duplicate.`,
+      duplicate: true, existing: dupe[0],
+    }, { status: 409 });
+  }
+
   let slug = b.slug ? cleanSlug(b.slug) : '';
   if (slug) {
     if (slug.length < 2) return Response.json({ error: 'Custom back-half is too short' }, { status: 400 });

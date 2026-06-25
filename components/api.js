@@ -35,11 +35,6 @@ export const api = {
 
   audit: (params = '') => jsonFetch('/api/audit' + params),
 
-  shortLinks: (params = '') => jsonFetch('/api/shortlinks' + params),
-  createShortLink: (body) => jsonFetch('/api/shortlinks', { method: 'POST', body: JSON.stringify(body) }),
-  bitlyStatus: () => jsonFetch('/api/shortlinks/status'),
-  shortLinkClicks: () => jsonFetch('/api/shortlinks/clicks'),
-
   hub: () => jsonFetch('/api/hub'),
   createHubLink: (body) => jsonFetch('/api/hub', { method: 'POST', body: JSON.stringify(body) }),
   deleteHubLink: (id) => jsonFetch('/api/hub?id=' + encodeURIComponent(id), { method: 'DELETE' }),

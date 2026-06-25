@@ -10,7 +10,7 @@ Internal platform for governing campaign taxonomy, approving codes, and building
 - **Audit log** — every create, status change, approval, and link generation is recorded with actor, timestamp, and before/after.
 - **Shared database** — all of the above is in Postgres, so it works across users (unlike the old browser-only prototype).
 - **UTM links** — build from an approved code, auto-copy, logged to history, immersive red Cat-website branding.
-- **Links & QR (Bitly)** — a dedicated area to shorten any tracked link or arbitrary URL through your one Bitly account, with a scalable QR code (PNG/SVG download) for print, email, and events. All generated short links are logged and searchable.
+- **Link Hub (self-hosted short links + QR)** — shorten any URL through our own redirect engine at `/s/<slug>`, generate a scalable QR code, and track clicks/scans in-house (device, referrer, country). No third-party dependency.
 - **Taxonomy editor** — admins grow the controlled vocabulary (business units, initiatives, campaigns).
 
 ## Local development
@@ -28,7 +28,7 @@ npm run dev                     # http://localhost:3000
 1. Push this folder to a GitHub repo.
 2. In Vercel: **New Project → import the repo**. Framework auto-detects as Next.js.
 3. **Storage → Create → Neon (Postgres)**, attach it to the project. Vercel injects `DATABASE_URL` automatically.
-4. **Settings → Environment Variables**: add `AUTH_SECRET` (run `openssl rand -base64 32` for a value) and `BITLY_TOKEN` (a **freshly regenerated** Bitly API token — Bitly → Settings → API).
+4. **Settings → Environment Variables**: add `AUTH_SECRET` (run `openssl rand -base64 32` for a value).
 5. Deploy. Then run the DB scripts once against the production DB:
    ```bash
    # locally, with the production DATABASE_URL exported:

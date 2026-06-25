@@ -588,6 +588,48 @@ function Step({ n, label, param, hint, children }) {
     </div>
   );
 }
+function CodePicker({ codes, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const selected = codes.find((c) => c.id === value);
+  const filtered = useMemo(() => {
+    const ql = q.trim().toLowerCase();
+    return codes.filter((c) => !ql || `${c.code} ${c.camp_name} ${c.business_unit} ${c.initiative}`.toLowerCase().includes(ql)).slice(0, 60);
+  }, [codes, q]);
+  return (
+    <div style={{ position: 'relative' }}>
+      <button type="button" onClick={() => { setOpen((o) => !o); setQ(''); }}
+        style={{ ...inputStyle, textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <span style={{ color: selected ? C.white : C.fog2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {selected ? <><span className="mono" style={{ color: ACCENT }}>{selected.code}</span> — {selected.camp_name}</> : 'Search an approved code…'}
+        </span>
+        <span style={{ color: C.fog2, flexShrink: 0 }}>{open ? '▴' : '▾'}</span>
+      </button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 6, zIndex: 40, ...card, overflow: 'hidden', boxShadow: '0 16px 40px rgba(0,0,0,.5)' }}>
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Type a code, campaign, or division…"
+              style={{ width: '100%', fontSize: 13, padding: '11px 13px', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.line}`, color: C.white, outline: 'none' }} />
+            <div style={{ maxHeight: 270, overflowY: 'auto', padding: 5 }}>
+              {filtered.length === 0 ? <div style={{ padding: 18, textAlign: 'center', color: C.fog2, fontSize: 12.5 }}>No matching codes.</div>
+                : filtered.map((c) => (
+                  <div key={c.id} onClick={() => { onChange(c.id); setOpen(false); }}
+                    style={{ padding: '9px 11px', borderRadius: 8, cursor: 'pointer', background: c.id === value ? ACCENT_SOFT : 'transparent' }}
+                    onMouseEnter={(e) => { if (c.id !== value) e.currentTarget.style.background = C.ink3; }}
+                    onMouseLeave={(e) => { if (c.id !== value) e.currentTarget.style.background = 'transparent'; }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span className="mono" style={{ fontSize: 12.5, fontWeight: 600, color: ACCENT }}>{c.code}</span><span style={{ fontSize: 12.5, color: C.white, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.camp_name}</span></div>
+                    <div style={{ fontSize: 11, color: C.fog2 }}>{c.business_unit}{c.initiative ? ` · ${c.initiative}` : ''}</div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function UtmLinks({ user, data, reload }) {
   const usable = data.codes.filter((c) => c.status === 'active' || c.status === 'deprecated');
   const [codeId, setCodeId] = useState('');
@@ -671,15 +713,8 @@ function UtmLinks({ user, data, reload }) {
       {tab === 'build' ? (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 16, alignItems: 'start' }}>
           <div className="cb-fade" style={{ ...card, padding: 24 }}>
-            <Step n={1} label="Campaign code" param="utm_campaign" hint="Grouped by division">
-              <select value={codeId} onChange={(e) => setCodeId(e.target.value)} style={inputStyle}>
-                <option value="">Select an approved code…</option>
-                {codesByBU.map(([bu, list]) => (
-                  <optgroup key={bu} label={bu}>
-                    {list.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.camp_name}</option>)}
-                  </optgroup>
-                ))}
-              </select>
+            <Step n={1} label="Campaign code" param="utm_campaign" hint="Search to filter">
+              <CodePicker codes={usable} value={codeId} onChange={setCodeId} />
             </Step>
             <Step n={2} label="Link type" param="utm_content" hint="What the link sits on">
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -783,7 +818,7 @@ function UtmLinks({ user, data, reload }) {
       {confirmDel && (
         <Modal title="Delete UTM link" sub="This removes it from the registry." onClose={() => setConfirmDel(null)} width={440}>
           <p style={{ fontSize: 13.5, color: C.fog, lineHeight: 1.6, marginBottom: 14 }}>
-            Delete this tracked link? This only removes it from Catalyst's history — it doesn't affect any Bitly short link already pointing at it.
+            Delete this tracked link? This only removes it from Catalyst's history — it doesn't affect any short link already pointing at it.
           </p>
           <div style={{ background: C.ink3, border: `1px solid ${C.line}`, borderRadius: 10, padding: 12, marginBottom: 18 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 5 }}><Badge>{confirmDel.code}</Badge><span style={{ fontSize: 12.5, color: C.white, fontWeight: 500 }}>{confirmDel.title}</span></div>
@@ -893,182 +928,6 @@ function TaxoSelectPane({ title, parentLabel, parents, group, onAdd, codeLen }) 
                 <span className="mono" style={{ fontWeight: 600, color: ACCENT, width: 36 }}>{k}</span><span style={{ fontSize: 13 }}>{val}</span>
               </div>
             ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ----------------- LINKS & QR (Bitly) ----------------- */
-function LinksQR({ user, data, reload }) {
-  const [bitly, setBitly] = useState(null);          // {connected, account?}
-  const [shortLinks, setShortLinks] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // builder state
-  const [source, setSource] = useState('manual');    // 'manual' | 'utm'
-  const [utmId, setUtmId] = useState('');
-  const [manualUrl, setManualUrl] = useState('');
-  const [title, setTitle] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState(null);        // the freshly created short link
-  const [q, setQ] = useState('');
-  const [clicks, setClicks] = useState(null);        // { stats: {id: n|null}, total } from Bitly
-  const [statsBusy, setStatsBusy] = useState(false);
-
-  async function loadStats() {
-    setStatsBusy(true);
-    try { setClicks(await api.shortLinkClicks()); toast('Click stats updated'); }
-    catch (e) { toastErr(e.message); } finally { setStatsBusy(false); }
-  }
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [status, list] = await Promise.all([api.bitlyStatus().catch(() => ({ connected: false })), api.shortLinks()]);
-      setBitly(status);
-      setShortLinks(list.shortLinks);
-    } catch (e) { toastErr(e.message); } finally { setLoading(false); }
-  }, []);
-  useEffect(() => { refresh(); }, [refresh]);
-
-  const utmLink = data.links.find((l) => l.id === utmId);
-  const longUrl = source === 'utm' ? (utmLink?.url || '') : manualUrl.trim();
-  const ready = longUrl && (bitly?.connected) && !busy;
-
-  async function generate() {
-    if (!ready) return;
-    setBusy(true);
-    try {
-      const r = await api.createShortLink({
-        longUrl,
-        title: title.trim() || (utmLink ? `${utmLink.code} · ${utmLink.title}` : undefined),
-        linkId: source === 'utm' ? utmId : undefined,
-      });
-      setResult(r);
-      navigator.clipboard?.writeText(r.shortUrl).catch(() => {});
-      toast('Short link created & copied');
-      setTitle('');
-      if (source === 'manual') setManualUrl('');
-      refresh();
-    } catch (e) { toastErr(e.message); } finally { setBusy(false); }
-  }
-
-  const filtered = useMemo(() => !q ? shortLinks
-    : shortLinks.filter((s) => `${s.short_url} ${s.long_url} ${s.title || ''}`.toLowerCase().includes(q.toLowerCase())), [shortLinks, q]);
-
-  const sel = { ...inputStyle };
-  return (
-    <div>
-      <PageHead title="Links & QR" sub="Shorten any tracked link with Bitly and generate a QR code for print, email, or events." />
-
-      {/* Bitly connection banner */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 18, padding: '11px 15px', borderRadius: 11,
-        background: bitly?.connected ? 'rgba(52,199,89,.1)' : 'rgba(255,176,32,.1)',
-        border: `1px solid ${bitly?.connected ? 'rgba(52,199,89,.3)' : 'rgba(255,176,32,.35)'}` }}>
-        <span style={{ width: 9, height: 9, borderRadius: '50%', background: bitly?.connected ? C.good : C.warn }} />
-        <div style={{ fontSize: 12.5, color: C.fog }}>
-          {loading ? 'Checking Bitly connection…'
-            : bitly?.connected
-              ? <><b style={{ color: C.white, fontWeight: 600 }}>Bitly connected.</b>{bitly.account ? ` Account: ${bitly.account.login}.` : ''} The whole team shortens through this one account.</>
-              : <><b style={{ color: C.white, fontWeight: 600 }}>Bitly not connected.</b> An admin needs to set <span className="mono" style={{ color: C.warn }}>BITLY_TOKEN</span> in the server environment.</>}
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 14, alignItems: 'start' }}>
-        {/* builder */}
-        <div style={{ ...card, padding: 22 }}>
-          <Field label="What are you shortening?">
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Btn variant={source === 'utm' ? 'primary' : 'subtle'} style={{ flex: 1, fontSize: 12.5, padding: 9 }} onClick={() => setSource('utm')}>A tracked UTM link</Btn>
-              <Btn variant={source === 'manual' ? 'primary' : 'subtle'} style={{ flex: 1, fontSize: 12.5, padding: 9 }} onClick={() => setSource('manual')}>Any URL</Btn>
-            </div>
-          </Field>
-
-          {source === 'utm' ? (
-            <Field label="Tracked link" hint="Pick from links built in UTM links.">
-              <select value={utmId} onChange={(e) => setUtmId(e.target.value)} style={sel}>
-                <option value="">Select a tracked link…</option>
-                {data.links.map((l) => <option key={l.id} value={l.id}>{l.code} — {l.title}</option>)}
-              </select>
-              {utmLink && <div className="mono" style={{ marginTop: 9, fontSize: 11, color: C.fog, wordBreak: 'break-all', lineHeight: 1.5 }}>{utmLink.url}</div>}
-            </Field>
-          ) : (
-            <Field label="URL to shorten" param="long URL">
-              <input value={manualUrl} onChange={(e) => setManualUrl(e.target.value)} placeholder="https://rent.cat.com/page?utm_…" style={inputStyle} />
-            </Field>
-          )}
-
-          <Field label="Label (optional)" hint="Helps you find this short link later.">
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Spring expo booth banner" style={inputStyle} />
-          </Field>
-
-          <Btn disabled={!ready} onClick={generate} style={{ width: '100%' }}>
-            {busy ? 'Creating…' : 'Create short link + QR'}
-          </Btn>
-          {!bitly?.connected && !loading && (
-            <div style={{ marginTop: 10, fontSize: 11.5, color: C.fog2 }}>Connect Bitly to enable generation.</div>
-          )}
-        </div>
-
-        {/* result / QR panel */}
-        <div style={{ ...card, padding: 20, position: 'sticky', top: 0 }}>
-          <div className="mono" style={{ fontSize: 10.5, letterSpacing: '.14em', textTransform: 'uppercase', color: C.fog2, marginBottom: 14 }}>Result</div>
-          {result ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-              <QR value={result.shortUrl} svgMarkup={result.qrSvg} size={170} label={result.bitlyId?.replace('bit.ly/', '') || 'code'} />
-              <div style={{ fontSize: 11, color: result.qrSource === 'bitly' ? C.good : C.fog2 }}>
-                {result.qrSource === 'bitly' ? 'Bitly QR code · saved to your Bitly account' : 'App-generated QR (Bitly QR API unavailable on this plan)'}
-              </div>
-              <div style={{ width: '100%', textAlign: 'center' }}>
-                <a href={result.shortUrl} target="_blank" rel="noreferrer" className="mono" style={{ fontSize: 14, fontWeight: 600, color: ACCENT, wordBreak: 'break-all' }}>{result.shortUrl}</a>
-                <button onClick={() => { navigator.clipboard?.writeText(result.shortUrl); toast('Copied'); }} style={{ display: 'block', margin: '10px auto 0', cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: '7px 14px', borderRadius: 8, background: C.ink3, border: `1px solid ${C.line2}`, color: C.white }}>Copy short link</button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ textAlign: 'center', color: C.fog2, fontSize: 13, padding: '30px 0' }}>
-              <div style={{ fontSize: 26, marginBottom: 10, opacity: 0.6 }}>▦</div>
-              Your short link and QR code appear here.
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* history */}
-      <div style={{ marginTop: 22 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
-          <h3 style={{ fontFamily: 'Archivo', fontWeight: 700, fontSize: 15 }}>Generated short links{clicks ? <span style={{ color: C.fog, fontWeight: 500, fontSize: 13 }}> · {clicks.total} total clicks</span> : ''}</h3>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <button onClick={loadStats} disabled={statsBusy || !bitly?.connected} title={bitly?.connected ? 'Pull click & QR-scan counts from Bitly' : 'Connect Bitly to load stats'}
-              style={{ cursor: bitly?.connected && !statsBusy ? 'pointer' : 'not-allowed', fontSize: 12, fontWeight: 600, padding: '8px 13px', borderRadius: 8, background: C.ink3, border: `1px solid ${C.line2}`, color: C.white, opacity: bitly?.connected ? 1 : 0.5, flexShrink: 0 }}>{statsBusy ? 'Loading…' : '↻ Refresh stats'}</button>
-            <div style={{ width: 230 }}><Search value={q} onChange={setQ} placeholder="Search short links…" /></div>
-          </div>
-        </div>
-        <div style={{ ...card, overflow: 'hidden' }}>
-          {filtered.length === 0
-            ? <div style={{ padding: 40, textAlign: 'center', color: C.fog2, fontSize: 13 }}>No short links yet.</div>
-            : <div style={{ maxHeight: 360, overflowY: 'auto' }}>
-              {filtered.map((s) => (
-                <div key={s.id} style={{ padding: '13px 18px', borderBottom: `1px solid ${C.line}`, display: 'flex', gap: 14, alignItems: 'center' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', gap: 9, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
-                      <a href={s.short_url} target="_blank" rel="noreferrer" className="mono" style={{ fontWeight: 600, fontSize: 13, color: ACCENT }}>{s.short_url}</a>
-                      {s.title && <span style={{ fontSize: 12, color: C.white }}>{s.title}</span>}
-                      <span style={{ fontSize: 11, color: C.fog2 }}>· {s.created_by}</span>
-                    </div>
-                    <div className="mono" style={{ fontSize: 11, color: C.fog, wordBreak: 'break-all' }}>{s.long_url}</div>
-                  </div>
-                  {clicks && <span title="Clicks & QR scans (via Bitly)" style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, fontFamily: 'Archivo', fontSize: 14, fontWeight: 800, color: ACCENT, background: ACCENT_SOFT, padding: '5px 10px', borderRadius: 8, flexShrink: 0 }}>{clicks.stats[s.id] == null ? '—' : clicks.stats[s.id]}<span style={{ fontFamily: 'Inter', fontSize: 9.5, fontWeight: 600, color: C.fog2, textTransform: 'uppercase', letterSpacing: '.04em' }}>clicks</span></span>}
-                  <button onClick={() => { navigator.clipboard?.writeText(s.short_url); toast('Copied'); }} style={{ cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 8, background: C.ink3, border: `1px solid ${C.line2}`, color: C.white, flexShrink: 0 }}>Copy</button>
-                  <details style={{ flexShrink: 0 }}>
-                    <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 600, color: C.fog, listStyle: 'none' }}>QR</summary>
-                    <div style={{ position: 'absolute', marginTop: 8, marginLeft: -150, zIndex: 30, ...card, padding: 14, boxShadow: '0 12px 30px rgba(0,0,0,.5)' }}>
-                      <QR value={s.short_url} svgMarkup={s.qr_svg} size={150} label={(s.bitly_id || '').replace('bit.ly/', '') || 'code'} />
-                    </div>
-                  </details>
-                </div>
-              ))}
-            </div>}
         </div>
       </div>
     </div>
@@ -1396,8 +1255,8 @@ const NAV_SECTIONS = [
   ]],
   ['Links & tracking', [
     ['links', 'UTM links', '⛓', 'user'],
-    ['linksqr', 'Links & QR', '▦', 'user'],
     ['hub', 'Link Hub', '🔗', 'user'],
+    ['/qr-generation', 'QR Platform', '✦', 'user'],
   ]],
   ['Administration', [
     ['audit', 'Audit log', '◷', 'approver'],
@@ -1522,15 +1381,16 @@ export default function Portal() {
               <div key={section || 'main'} style={{ marginBottom: 8 }}>
                 {section && <div style={{ fontSize: 9.5, color: C.fog2, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 700, padding: '8px 12px 6px' }}>{section}</div>}
                 {visible.map(([k, label, icon]) => {
+                  const isLink = k.startsWith('/');
                   const on = view === k; const locked = k === 'taxonomy' && !can(user, 'admin');
                   const badge = k === 'approvals' && data.pending.length > 0 ? data.pending.length : null;
                   return (
-                    <button key={k} onClick={() => setView(k)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '10px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left', background: on ? ACCENT_SOFT : 'transparent', color: on ? C.white : C.fog, fontWeight: on ? 600 : 500, fontSize: 13.5, transition: 'background .14s, color .14s' }}
+                    <button key={k} onClick={() => isLink ? (window.location.href = k) : setView(k)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '10px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left', background: on ? ACCENT_SOFT : 'transparent', color: on ? C.white : C.fog, fontWeight: on ? 600 : 500, fontSize: 13.5, transition: 'background .14s, color .14s' }}
                       onMouseEnter={(e) => { if (!on) { e.currentTarget.style.background = C.ink3; e.currentTarget.style.color = C.white; } }}
                       onMouseLeave={(e) => { if (!on) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.fog; } }}>
                       {on && <span style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, borderRadius: 99, background: ACCENT }} />}
                       <span style={{ width: 18, textAlign: 'center', color: on ? ACCENT : C.fog2, fontSize: 14 }}>{icon}</span>
-                      <span style={{ flex: 1 }}>{label}</span>
+                      <span style={{ flex: 1 }}>{label}{isLink && <span style={{ color: C.fog2, marginLeft: 4 }}>↗</span>}</span>
                       {badge && <span style={{ fontSize: 10.5, fontWeight: 700, minWidth: 18, height: 18, borderRadius: 9, background: ACCENT, color: ACCENT_TEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>{badge}</span>}
                       {locked && <span style={{ fontSize: 11, color: C.fog2 }}>🔒</span>}
                     </button>
@@ -1564,7 +1424,6 @@ export default function Portal() {
           {view === 'codes' && <CampaignCodes {...props} />}
           {view === 'approvals' && <Approvals {...props} />}
           {view === 'links' && <UtmLinks {...props} />}
-          {view === 'linksqr' && <LinksQR {...props} />}
           {view === 'hub' && <LinkHub {...props} />}
           {view === 'taxonomy' && <Taxonomy {...props} />}
           {view === 'audit' && <AuditLog {...props} />}
