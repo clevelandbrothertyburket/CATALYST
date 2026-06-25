@@ -510,6 +510,13 @@ function DecideModal({ req, onClose, onDone }) {
 /* ----------------- UTM LINKS ----------------- */
 const CONTENT_TYPES = [['button', 'Button'], ['text', 'Text'], ['image', 'Image']];
 const MEDIUMS = [['email', 'Email'], ['website', 'Website']];
+// UTM governance: keep parameter values clean & consistent — lowercase, hyphenated,
+// no spaces or odd characters. Applied live as users type and again on the server.
+const cleanSlug = (s) => String(s == null ? '' : s)
+  .toLowerCase().trim()
+  .replace(/\s+/g, '-')
+  .replace(/[^a-z0-9._-]/g, '')
+  .replace(/-+/g, '-');
 function Chip({ children, on, ghost, onClick }) {
   return <button onClick={onClick} style={{ cursor: 'pointer', padding: '8px 14px', borderRadius: 10, fontSize: 12.5, fontWeight: on ? 600 : 500, background: on ? ACCENT : C.ink3, color: on ? ACCENT_TEXT : '#fff', border: `1px solid ${on ? ACCENT : C.line2}`, borderStyle: ghost && !on ? 'dashed' : 'solid' }}>{children}</button>;
 }
@@ -550,6 +557,7 @@ function UtmLinks({ user, data, reload }) {
   const [title, setTitle] = useState(''); const [url, setUrl] = useState('');
   const [tab, setTab] = useState('build'); const [q, setQ] = useState('');
   const [destFilter, setDestFilter] = useState('');
+  const [abCount, setAbCount] = useState(0); // 0 = single link; 2/3 = A/B(/C) variants
 
   // Group approved codes by division/industry for the dropdown.
   const codesByBU = useMemo(() => {
@@ -566,13 +574,24 @@ function UtmLinks({ user, data, reload }) {
 
   async function create(keep) {
     if (!ready) return;
-    try {
-      const { url: full } = await api.createLink({ codeId, content: contentVal, medium: mediumVal, title: title.trim(), baseUrl: url.trim() });
-      navigator.clipboard?.writeText(full).catch(() => {});
-      toast('Link created & copied'); setTitle(''); setUrl('');
-      if (!keep) { setContent(''); setCc(''); setMedium(''); setMc(''); }
+    // A/B mode: build N variants under the same campaign, differing only by an
+    // -a / -b / -c suffix on utm_content, so their performance can be compared.
+    const variants = abCount >= 2 ? Array.from({ length: abCount }, (_, i) => String.fromCharCode(97 + i)) : [null];
+    let made = 0, lastUrl = '', failed = 0;
+    for (const v of variants) {
+      const contentV = v ? cleanSlug(`${contentVal}-${v}`) : contentVal;
+      try {
+        const { url: full } = await api.createLink({ codeId, content: contentV, medium: mediumVal, title: title.trim(), baseUrl: url.trim() });
+        lastUrl = full; made++;
+      } catch (e) { failed++; toastErr(e.message); }
+    }
+    if (made) {
+      navigator.clipboard?.writeText(lastUrl).catch(() => {});
+      toast(abCount >= 2 ? `Created ${made} A/B variant${made > 1 ? 's' : ''}` : 'Link created & copied');
+      setTitle(''); setUrl('');
+      if (!keep) { setContent(''); setCc(''); setMedium(''); setMc(''); setAbCount(0); }
       reload();
-    } catch (e) { toastErr(e.message); }
+    }
   }
   const links = useMemo(() => data.links.filter((l) => {
     if (q && !`${l.code} ${l.title} ${l.url} ${l.medium}`.toLowerCase().includes(q.toLowerCase())) return false;
@@ -619,17 +638,17 @@ function UtmLinks({ user, data, reload }) {
                 {CONTENT_TYPES.map(([k, v]) => <Chip key={k} on={content === k} onClick={() => setContent(k)}>{v}</Chip>)}
                 <Chip ghost on={content === '__c'} onClick={() => setContent('__c')}>+ Other</Chip>
               </div>
-              {content === '__c' && <input value={cc} onChange={(e) => setCc(e.target.value)} placeholder="custom content" className="mono" style={{ ...inputStyle, marginTop: 10 }} />}
+              {content === '__c' && <input value={cc} onChange={(e) => setCc(cleanSlug(e.target.value))} placeholder="custom content" className="mono" style={{ ...inputStyle, marginTop: 10 }} />}
             </Step>
             <Step n={3} label="Medium" param="utm_medium">
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {MEDIUMS.map(([k, v]) => <Chip key={k} on={medium === k} onClick={() => setMedium(k)}>{v}</Chip>)}
                 <Chip ghost on={medium === '__c'} onClick={() => setMedium('__c')}>+ Other</Chip>
               </div>
-              {medium === '__c' && <input value={mc} onChange={(e) => setMc(e.target.value)} placeholder="custom medium" className="mono" style={{ ...inputStyle, marginTop: 10 }} />}
+              {medium === '__c' && <input value={mc} onChange={(e) => setMc(cleanSlug(e.target.value))} placeholder="custom medium" className="mono" style={{ ...inputStyle, marginTop: 10 }} />}
             </Step>
-            <Step n={4} label="Title" param="utm_term" hint="Short name for this link">
-              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. spring-promo-hero" className="mono" style={inputStyle} />
+            <Step n={4} label="Title" param="utm_term" hint="lowercase · auto-formatted">
+              <input value={title} onChange={(e) => setTitle(cleanSlug(e.target.value))} placeholder="e.g. spring-promo-hero" className="mono" style={inputStyle} />
             </Step>
             <Step n={5} label="Destination" param="base URL" hint="Pick a site, then add the path">
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
@@ -638,8 +657,13 @@ function UtmLinks({ user, data, reload }) {
               </div>
               <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://rent.cat.com/your-page" style={inputStyle} />
             </Step>
-            <div style={{ display: 'flex', gap: 10, marginTop: 6, paddingTop: 18, borderTop: `1px solid ${C.line}` }}>
-              <Btn disabled={!ready} onClick={() => create(true)} style={{ flex: 1 }}>Create &amp; keep code</Btn>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 4, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 12.5, color: C.fog, fontWeight: 600, marginRight: 2 }}>A/B test</span>
+              {[[0, 'Off'], [2, '2 · A/B'], [3, '3 · A/B/C']].map(([nn, lab]) => <Chip key={nn} on={abCount === nn} onClick={() => setAbCount(nn)}>{lab}</Chip>)}
+              {abCount >= 2 && <span style={{ fontSize: 11, color: C.fog2 }}>{contentVal ? `Builds: ${contentVal}-a, ${contentVal}-b${abCount === 3 ? `, ${contentVal}-c` : ''}` : `Builds ${abCount} variants`}</span>}
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 14, paddingTop: 18, borderTop: `1px solid ${C.line}` }}>
+              <Btn disabled={!ready} onClick={() => create(true)} style={{ flex: 1 }}>{abCount >= 2 ? 'Create variants & keep' : 'Create & keep code'}</Btn>
               <Btn variant="ghost" disabled={!ready} onClick={() => create(false)} style={{ flex: 1 }}>Create &amp; reset</Btn>
             </div>
           </div>
@@ -824,6 +848,14 @@ function LinksQR({ user, data, reload }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);        // the freshly created short link
   const [q, setQ] = useState('');
+  const [clicks, setClicks] = useState(null);        // { stats: {id: n|null}, total } from Bitly
+  const [statsBusy, setStatsBusy] = useState(false);
+
+  async function loadStats() {
+    setStatsBusy(true);
+    try { setClicks(await api.shortLinkClicks()); toast('Click stats updated'); }
+    catch (e) { toastErr(e.message); } finally { setStatsBusy(false); }
+  }
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -940,8 +972,12 @@ function LinksQR({ user, data, reload }) {
       {/* history */}
       <div style={{ marginTop: 22 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
-          <h3 style={{ fontFamily: 'Archivo', fontWeight: 700, fontSize: 15 }}>Generated short links</h3>
-          <div style={{ width: 280 }}><Search value={q} onChange={setQ} placeholder="Search short links…" /></div>
+          <h3 style={{ fontFamily: 'Archivo', fontWeight: 700, fontSize: 15 }}>Generated short links{clicks ? <span style={{ color: C.fog, fontWeight: 500, fontSize: 13 }}> · {clicks.total} total clicks</span> : ''}</h3>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button onClick={loadStats} disabled={statsBusy || !bitly?.connected} title={bitly?.connected ? 'Pull click & QR-scan counts from Bitly' : 'Connect Bitly to load stats'}
+              style={{ cursor: bitly?.connected && !statsBusy ? 'pointer' : 'not-allowed', fontSize: 12, fontWeight: 600, padding: '8px 13px', borderRadius: 8, background: C.ink3, border: `1px solid ${C.line2}`, color: C.white, opacity: bitly?.connected ? 1 : 0.5, flexShrink: 0 }}>{statsBusy ? 'Loading…' : '↻ Refresh stats'}</button>
+            <div style={{ width: 230 }}><Search value={q} onChange={setQ} placeholder="Search short links…" /></div>
+          </div>
         </div>
         <div style={{ ...card, overflow: 'hidden' }}>
           {filtered.length === 0
@@ -957,6 +993,7 @@ function LinksQR({ user, data, reload }) {
                     </div>
                     <div className="mono" style={{ fontSize: 11, color: C.fog, wordBreak: 'break-all' }}>{s.long_url}</div>
                   </div>
+                  {clicks && <span title="Clicks & QR scans (via Bitly)" style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, fontFamily: 'Archivo', fontSize: 14, fontWeight: 800, color: ACCENT, background: ACCENT_SOFT, padding: '5px 10px', borderRadius: 8, flexShrink: 0 }}>{clicks.stats[s.id] == null ? '—' : clicks.stats[s.id]}<span style={{ fontFamily: 'Inter', fontSize: 9.5, fontWeight: 600, color: C.fog2, textTransform: 'uppercase', letterSpacing: '.04em' }}>clicks</span></span>}
                   <button onClick={() => { navigator.clipboard?.writeText(s.short_url); toast('Copied'); }} style={{ cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 8, background: C.ink3, border: `1px solid ${C.line2}`, color: C.white, flexShrink: 0 }}>Copy</button>
                   <details style={{ flexShrink: 0 }}>
                     <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 600, color: C.fog, listStyle: 'none' }}>QR</summary>
@@ -1018,6 +1055,7 @@ function Users({ user }) {
   const [show, setShow] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', role: 'user', password: '' });
   const [busy, setBusy] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -1041,10 +1079,22 @@ function Users({ user }) {
     if (form.password.length < 8) return toastErr('Password must be at least 8 characters');
     setBusy(true);
     try {
-      await api.createUser(form);
-      toast(`Invited ${form.name}`);
+      const res = await api.createUser(form);
+      if (res.emailed) toast(`Invite emailed to ${form.email}`);
+      else { toast(`${form.name} added`); if (res.emailError) toastErr(res.emailError); }
       setForm({ name: '', email: '', role: 'user', password: '' });
       setShow(false);
+      load();
+    } catch (e) { toastErr(e.message); } finally { setBusy(false); }
+  }
+
+  async function doDelete() {
+    if (!confirmDel) return;
+    setBusy(true);
+    try {
+      await api.deleteUser(confirmDel.id);
+      toast(`Removed ${confirmDel.name}`);
+      setConfirmDel(null);
       load();
     } catch (e) { toastErr(e.message); } finally { setBusy(false); }
   }
@@ -1067,7 +1117,12 @@ function Users({ user }) {
               </div>
               {!u.has_password && <Badge color={C.warn} bg="rgba(255,176,32,.14)">no password</Badge>}
               <Badge>{u.role}</Badge>
-              <span style={{ fontSize: 11, color: C.fog2, flexShrink: 0, width: 110, textAlign: 'right' }}>{fmtDate(u.created_at)}</span>
+              <span style={{ fontSize: 11, color: C.fog2, flexShrink: 0, width: 96, textAlign: 'right' }}>{fmtDate(u.created_at)}</span>
+              {u.id === user.id
+                ? <span style={{ width: 30, flexShrink: 0 }} />
+                : <button title={`Remove ${u.name}`} onClick={() => setConfirmDel(u)} style={{ ...iconBtn, color: '#FFB020' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#FFB020')}
+                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = C.line2)}>🗑</button>}
             </div>
           ))}
       </div>
@@ -1084,12 +1139,23 @@ function Users({ user }) {
               {ROLE_OPTIONS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
             </select>
           </Field>
-          <Field label="Temporary password" hint="At least 8 characters. Share it securely; they can be reset later.">
+          <Field label="Temporary password" hint="At least 8 characters. Emailed to the user in a branded invite (if email is configured).">
             <input type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Set an initial password" className="mono" style={inputStyle} />
           </Field>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 9, marginTop: 4 }}>
             <Btn variant="ghost" onClick={() => setShow(false)}>Cancel</Btn>
             <Btn onClick={invite} disabled={busy}>{busy ? 'Inviting…' : 'Invite user'}</Btn>
+          </div>
+        </Modal>
+      )}
+      {confirmDel && (
+        <Modal title="Remove user" sub="This permanently deletes the account." onClose={() => setConfirmDel(null)} width={420}>
+          <p style={{ fontSize: 13.5, color: C.fog, lineHeight: 1.6, marginBottom: 18 }}>
+            Permanently delete <b style={{ color: '#fff' }}>{confirmDel.name}</b> (<span className="mono">{confirmDel.email}</span>)? They'll be cleared from the system immediately and signed out. This can't be undone.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 9 }}>
+            <Btn variant="ghost" onClick={() => setConfirmDel(null)}>Cancel</Btn>
+            <Btn variant="danger" onClick={doDelete} disabled={busy}>{busy ? 'Removing…' : 'Delete user'}</Btn>
           </div>
         </Modal>
       )}

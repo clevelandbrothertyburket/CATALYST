@@ -4,6 +4,11 @@ import { audit, USABLE_STATUSES } from '@/lib/domain';
 
 export const dynamic = 'force-dynamic';
 
+// UTM governance: normalize parameter values to a clean, consistent slug
+// (lowercase, hyphenated, no spaces or stray characters) on the server.
+const slug = (s) => String(s == null ? '' : s)
+  .toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9._-]/g, '').replace(/-+/g, '-');
+
 export async function GET(req) {
   const auth = await requireUser('viewer');
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
@@ -21,7 +26,8 @@ export async function POST(req) {
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
 
   const b = await req.json().catch(() => ({}));
-  const { codeId, content, medium, title, baseUrl } = b;
+  const { codeId, baseUrl } = b;
+  const content = slug(b.content), medium = slug(b.medium), title = slug(b.title);
   if (!codeId || !content || !medium || !title || !baseUrl)
     return Response.json({ error: 'Missing required fields' }, { status: 400 });
 

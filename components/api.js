@@ -17,6 +17,7 @@ export const api = {
 
   users: () => jsonFetch('/api/users'),
   createUser: (body) => jsonFetch('/api/users', { method: 'POST', body: JSON.stringify(body) }),
+  deleteUser: (id) => jsonFetch('/api/users?id=' + encodeURIComponent(id), { method: 'DELETE' }),
 
   codes: (params = '') => jsonFetch('/api/codes' + params),
   changeStatus: (id, to) => jsonFetch(`/api/codes/${id}/status`, { method: 'POST', body: JSON.stringify({ to }) }),
@@ -36,4 +37,5 @@ export const api = {
   shortLinks: (params = '') => jsonFetch('/api/shortlinks' + params),
   createShortLink: (body) => jsonFetch('/api/shortlinks', { method: 'POST', body: JSON.stringify(body) }),
   bitlyStatus: () => jsonFetch('/api/shortlinks/status'),
+  shortLinkClicks: () => jsonFetch('/api/shortlinks/clicks'),
 };
