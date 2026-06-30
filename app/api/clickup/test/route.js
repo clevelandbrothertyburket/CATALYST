@@ -1,5 +1,5 @@
 import { requireUser } from '@/lib/auth';
-import { clickupConfigured, getAuthedUser, getList, discoverLists } from '@/lib/clickup';
+import { clickupConfigured, getAuthedUser, getList, discoverLists, getRecentTasks } from '@/lib/clickup';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +21,11 @@ export async function GET(req) {
 
   try { out.list = await getList(); }
   catch (e) { out.listError = String(e && e.message || e); out.listStatus = e && e.status; }
+
+  if (!out.listError) {
+    try { out.recentTasks = await getRecentTasks(); }
+    catch (e) { out.recentTasksError = String(e && e.message || e); }
+  }
 
   // If the configured list id is missing/invalid, enumerate all lists so we can pick the right one.
   if (out.listError || new URL(req.url).searchParams.get('lists') === '1') {
