@@ -39,4 +39,5 @@ export const api = {
   createHubLink: (body) => jsonFetch('/api/hub', { method: 'POST', body: JSON.stringify(body) }),
   deleteHubLink: (id) => jsonFetch('/api/hub?id=' + encodeURIComponent(id), { method: 'DELETE' }),
   hubStats: (id) => jsonFetch('/api/hub/stats?id=' + encodeURIComponent(id)),
+  bitlyStats: (id) => jsonFetch('/api/hub/bitly?id=' + encodeURIComponent(id)),
 };

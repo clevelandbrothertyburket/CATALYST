@@ -125,7 +125,9 @@ CREATE TABLE IF NOT EXISTS cb_short_links (
   long_url    TEXT NOT NULL,                  -- destination
   title       TEXT,
   created_by  TEXT NOT NULL,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  bitly_id    TEXT,                           -- Bitly bitlink id (e.g. bit.ly/3abc) when BITLY_TOKEN set
+  bitly_link  TEXT                            -- full Bitly short URL
 );
 CREATE INDEX IF NOT EXISTS idx_cb_short_slug ON cb_short_links(slug);
 

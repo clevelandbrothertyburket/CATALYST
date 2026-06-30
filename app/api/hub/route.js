@@ -1,6 +1,7 @@
 import { sql, newId } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
 import { audit } from '@/lib/domain';
+import { bitlyConfigured, shorten } from '@/lib/bitly';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,7 @@ export async function GET(req) {
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
   const rows = await sql`
     SELECT l.id, l.slug, l.long_url, l.title, l.created_by, l.created_at,
+           l.bitly_id, l.bitly_link,
            count(c.id)::int AS clicks
     FROM cb_short_links l
     LEFT JOIN cb_clicks c ON c.link_id = l.id
@@ -62,8 +64,21 @@ export async function POST(req) {
 
   const id = newId('cb');
   await sql`INSERT INTO cb_short_links (id, slug, long_url, title, created_by) VALUES (${id}, ${slug}, ${longUrl}, ${title}, ${auth.user.name})`;
-  await audit({ actor: auth.user.name, action: 'shortlink.created', entity: 'short_link', entityId: id, after: { slug, longUrl } });
-  return Response.json({ id, slug, long_url: longUrl, title, created_by: auth.user.name, clicks: 0, shortUrl: `${baseUrl(req)}/s/${slug}` });
+
+  // Optionally mirror to Bitly so its tracking flows back into Catalyst.
+  let bitly = null;
+  if (bitlyConfigured()) {
+    try {
+      const bl = await shorten(longUrl, title || undefined);
+      bitly = { id: bl.id, link: bl.link };
+      await sql`UPDATE cb_short_links SET bitly_id = ${bl.id}, bitly_link = ${bl.link} WHERE id = ${id}`;
+    } catch (e) {
+      bitly = { error: String(e && e.message || e) };
+    }
+  }
+
+  await audit({ actor: auth.user.name, action: 'shortlink.created', entity: 'short_link', entityId: id, after: { slug, longUrl, bitly: bitly && bitly.id } });
+  return Response.json({ id, slug, long_url: longUrl, title, created_by: auth.user.name, clicks: 0, shortUrl: `${baseUrl(req)}/s/${slug}`, bitly_id: bitly && bitly.id || null, bitly_link: bitly && bitly.link || null, bitly });
 }
 
 // Delete a short link and its click history (approver/admin).

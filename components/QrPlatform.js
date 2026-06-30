@@ -68,6 +68,7 @@ export default function QrPlatform() {
   const [confirmDel, setConfirmDel] = useState(null);
   const [statsFor, setStatsFor] = useState(null);
   const [stats, setStats] = useState(null);
+  const [bitly, setBitly] = useState(null);
 
   useEffect(() => { api.session().then((d) => setUser(d.user)).catch(() => setUser(null)); }, []);
   useEffect(() => { try { const t = localStorage.getItem('cb-theme'); if (t) setTheme(t); } catch {} }, []);
@@ -87,7 +88,11 @@ export default function QrPlatform() {
     try { await api.deleteHubLink(confirmDel.id); toast('Link deleted'); setConfirmDel(null); load(); }
     catch (e) { toastErr(e.message); } finally { setBusy(false); }
   }
-  async function openStats(l) { setStatsFor(l); setStats(null); try { setStats(await api.hubStats(l.id)); } catch (e) { toastErr(e.message); } }
+  async function openStats(l) {
+    setStatsFor(l); setStats(null); setBitly(null);
+    try { setStats(await api.hubStats(l.id)); } catch (e) { toastErr(e.message); }
+    api.bitlyStats(l.id).then(setBitly).catch(() => {});
+  }
 
   const filtered = useMemo(() => !q ? links : links.filter((l) => `${l.slug} ${l.long_url} ${l.title || ''}`.toLowerCase().includes(q.toLowerCase())), [links, q]);
   const totalClicks = useMemo(() => links.reduce((s, l) => s + (l.clicks || 0), 0), [links]);
@@ -223,6 +228,21 @@ export default function QrPlatform() {
                 <div><div style={statLabel}>City</div><Bars rows={stats.byCity} /></div>
                 <div><div style={statLabel}>Referrer</div><Bars rows={stats.byReferrer} /></div>
               </div>
+              {bitly && bitly.configured && bitly.linked && !bitly.error && (
+                <div style={{ marginTop: 22, paddingTop: 18, borderTop: `1px solid ${C.line}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <div style={statLabel}>Bitly tracking</div>
+                    {bitly.bitlyUrl && <a href={bitly.bitlyUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: ACCENT, textDecoration: 'none' }}>{bitly.bitlink} ↗</a>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 11, marginBottom: 16 }}>
+                    <div style={{ ...card, padding: '13px 16px', flex: 1, background: C.ink3 }}><div style={{ fontSize: 11, color: C.fog2, marginBottom: 4 }}>Bitly clicks</div><div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 27, color: ACCENT }}>{bitly.total}</div></div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 28px' }}>
+                    <div><div style={statLabel}>Country (Bitly)</div><Bars rows={bitly.byCountry} /></div>
+                    <div><div style={statLabel}>Referrer (Bitly)</div><Bars rows={bitly.byReferrer} /></div>
+                  </div>
+                </div>
+              )}
             </div>}
         </Modal>
       )}
