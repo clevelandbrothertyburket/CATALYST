@@ -1,5 +1,5 @@
 import { requireUser } from '@/lib/auth';
-import { clickupConfigured, getAuthedUser, getList, discoverLists, getRecentTasks } from '@/lib/clickup';
+import { clickupConfigured, getAuthedUser, getList, discoverLists, getRecentTasks, createCodeRequestTask } from '@/lib/clickup';
 
 export const dynamic = 'force-dynamic';
 
