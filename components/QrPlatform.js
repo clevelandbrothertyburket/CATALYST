@@ -55,6 +55,48 @@ const statLabel = { fontSize: 11.5, color: C.fog, fontWeight: 600, textTransform
 const iconBtn = { cursor: 'pointer', width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: C.ink3, border: `1px solid ${C.line2}`, color: C.white, fontSize: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' };
 const can = (u, r) => { const RANK = { viewer: 0, user: 1, approver: 2, admin: 3 }; return u && (RANK[u.role] ?? -1) >= (RANK[r] ?? 99); };
 
+const bcols = '1.3fr 1.6fr 90px 110px';
+function BitlyAccount({ data, loading, q, setQ, onReload }) {
+  if (loading && !data) return <div style={{ ...card, padding: 44, textAlign: 'center', color: C.fog2, fontSize: 13 }}>Loading your Bitly account…</div>;
+  if (data && data.configured === false) return <div style={{ ...card, padding: 30, color: C.fog, fontSize: 13.5, lineHeight: 1.6 }}>Bitly isn’t connected. Add a <span className="mono" style={{ color: C.white }}>BITLY_TOKEN</span> in the project settings to pull your account in here.</div>;
+  if (data && data.error) return <div style={{ ...card, padding: 30, color: '#FFB020', fontSize: 13.5 }}>Couldn’t reach Bitly: {data.error}</div>;
+  const links = (data && data.links) || [];
+  const filtered = !q ? links : links.filter((l) => `${l.link} ${l.title || ''} ${l.long_url}`.toLowerCase().includes(q.toLowerCase()));
+  const fmt = (s) => { try { return new Date(s).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); } catch { return ''; } };
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 13, marginBottom: 18, flexWrap: 'wrap' }}>
+        <div style={{ ...card, padding: '16px 20px', flex: 1, minWidth: 150 }}><div style={{ fontSize: 12, color: C.fog, fontWeight: 600, marginBottom: 8 }}>Bitlinks in account</div><div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 32, lineHeight: 1 }}>{data ? data.count : 0}</div></div>
+        <div style={{ ...card, padding: '16px 20px', flex: 1, minWidth: 150 }}><div style={{ fontSize: 12, color: C.fog, fontWeight: 600, marginBottom: 8 }}>Total Bitly clicks</div><div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 32, lineHeight: 1, color: ACCENT }}>{data ? data.totalClicks : 0}</div></div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
+        <h3 style={{ fontFamily: 'Archivo', fontWeight: 700, fontSize: 15 }}>Everything in Bitly</h3>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ width: 260 }}><Search value={q} onChange={setQ} placeholder="Search Bitly links…" /></div>
+          <button onClick={onReload} title="Reload from Bitly" style={iconBtn}>↻</button>
+        </div>
+      </div>
+      <div style={{ ...card, overflow: 'hidden' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: bcols, gap: 12, padding: '11px 18px', borderBottom: `1px solid ${C.line}`, background: C.ink3, fontSize: 10.5, letterSpacing: '.08em', textTransform: 'uppercase', color: C.fog2, fontWeight: 600 }}>
+          <span>Bitlink</span><span>Destination</span><span style={{ textAlign: 'right' }}>Clicks</span><span style={{ textAlign: 'right' }}>Created</span>
+        </div>
+        {filtered.length === 0 ? <div style={{ padding: 44, textAlign: 'center', color: C.fog2, fontSize: 13 }}>{links.length === 0 ? 'No Bitlinks found in this account yet.' : 'No links match your search.'}</div>
+          : <div>{filtered.map((l) => (
+            <div key={l.id} style={{ display: 'grid', gridTemplateColumns: bcols, gap: 12, alignItems: 'center', padding: '12px 18px', borderBottom: `1px solid ${C.line}` }}>
+              <div style={{ minWidth: 0 }}>
+                <a href={`https://${l.id}`} target="_blank" rel="noreferrer" className="mono" style={{ fontSize: 13, fontWeight: 600, color: ACCENT, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.id}</a>
+                {l.title && <span style={{ fontSize: 11.5, color: C.fog2 }}>{l.title}</span>}
+              </div>
+              <a href={l.long_url} target="_blank" rel="noreferrer" className="mono" style={{ fontSize: 11, color: C.fog, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, textDecoration: 'none' }}>{l.long_url}</a>
+              <div style={{ textAlign: 'right', fontFamily: 'Archivo', fontWeight: 800, fontSize: 16, color: l.clicks > 0 ? ACCENT : C.fog2 }}>{l.clicks == null ? '—' : l.clicks}</div>
+              <div style={{ textAlign: 'right', fontSize: 11.5, color: C.fog2 }}>{fmt(l.created_at)}</div>
+            </div>
+          ))}</div>}
+      </div>
+    </div>
+  );
+}
+
 export default function QrPlatform() {
   const [user, setUser] = useState(undefined);
   const [theme, setTheme] = useState('dark');
@@ -69,6 +111,9 @@ export default function QrPlatform() {
   const [statsFor, setStatsFor] = useState(null);
   const [stats, setStats] = useState(null);
   const [bitly, setBitly] = useState(null);
+  const [bitlyAcct, setBitlyAcct] = useState(null);
+  const [bitlyLoading, setBitlyLoading] = useState(false);
+  const [bq, setBq] = useState('');
 
   useEffect(() => { api.session().then((d) => setUser(d.user)).catch(() => setUser(null)); }, []);
   useEffect(() => { try { const t = localStorage.getItem('cb-theme'); if (t) setTheme(t); } catch {} }, []);
@@ -76,6 +121,12 @@ export default function QrPlatform() {
 
   const load = useCallback(() => { setLoading(true); api.hub().then((d) => setLinks(d.links)).catch((e) => toastErr(e.message)).finally(() => setLoading(false)); }, []);
   useEffect(() => { if (user) load(); }, [user, load]);
+
+  const loadBitly = useCallback(() => {
+    setBitlyLoading(true);
+    api.bitlyAccount().then(setBitlyAcct).catch((e) => toastErr(e.message)).finally(() => setBitlyLoading(false));
+  }, []);
+  useEffect(() => { if (user && tab === 'bitly' && !bitlyAcct) loadBitly(); }, [user, tab, bitlyAcct, loadBitly]);
 
   async function create() {
     if (!form.longUrl.trim()) return toastErr('Enter a destination URL');
@@ -120,7 +171,7 @@ export default function QrPlatform() {
           <BrandLogo brand={BRANDS.corporate} height={24} />
           <div style={{ width: 1, height: 24, background: C.line2 }} />
           <div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 16, letterSpacing: '-.02em' }}>Link Platform</div>
-          <div style={{ display: 'flex', gap: 4, marginLeft: 14 }}>{tabBtn('links', 'Links')}{tabBtn('analytics', 'Analytics')}</div>
+          <div style={{ display: 'flex', gap: 4, marginLeft: 14 }}>{tabBtn('links', 'Links')}{tabBtn('analytics', 'Analytics')}{tabBtn('bitly', 'Bitly')}</div>
           <div style={{ flex: 1 }} />
           <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Toggle theme" style={iconBtn}>{theme === 'dark' ? '☀' : '☾'}</button>
           <a href="/" style={{ fontSize: 12.5, fontWeight: 600, color: C.fog, textDecoration: 'none' }}>← Back to Catalyst</a>
@@ -129,10 +180,12 @@ export default function QrPlatform() {
 
       <main style={{ maxWidth: 1120, margin: '0 auto', padding: '26px 24px 60px' }}>
         {/* stat strip */}
+        {tab !== 'bitly' && (
         <div style={{ display: 'flex', gap: 13, marginBottom: 22, flexWrap: 'wrap' }}>
           <div style={{ ...card, padding: '16px 20px', flex: 1, minWidth: 150 }}><div style={{ fontSize: 12, color: C.fog, fontWeight: 600, marginBottom: 8 }}>Short links</div><div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 32, lineHeight: 1 }}>{links.length}</div></div>
           <div style={{ ...card, padding: '16px 20px', flex: 1, minWidth: 150 }}><div style={{ fontSize: 12, color: C.fog, fontWeight: 600, marginBottom: 8 }}>Total clicks</div><div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 32, lineHeight: 1, color: ACCENT }}>{totalClicks}</div></div>
         </div>
+        )}
 
         {tab === 'links' ? (
           <>
@@ -190,7 +243,7 @@ export default function QrPlatform() {
                 </div>}
             </div>
           </>
-        ) : (
+        ) : tab === 'analytics' ? (
           <div style={{ ...card, padding: 22 }}>
             <h3 style={{ fontFamily: 'Archivo', fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Top links by clicks</h3>
             {topLinks.length === 0 ? <div style={{ color: C.fog2, fontSize: 13, padding: '20px 0', textAlign: 'center' }}>No clicks recorded yet.</div>
@@ -206,6 +259,8 @@ export default function QrPlatform() {
                 ))}
               </div>}
           </div>
+        ) : (
+          <BitlyAccount data={bitlyAcct} loading={bitlyLoading} q={bq} setQ={setBq} onReload={() => { setBitlyAcct(null); }} />
         )}
       </main>
 

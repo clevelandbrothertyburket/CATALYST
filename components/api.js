@@ -40,4 +40,6 @@ export const api = {
   deleteHubLink: (id) => jsonFetch('/api/hub?id=' + encodeURIComponent(id), { method: 'DELETE' }),
   hubStats: (id) => jsonFetch('/api/hub/stats?id=' + encodeURIComponent(id)),
   bitlyStats: (id) => jsonFetch('/api/hub/bitly?id=' + encodeURIComponent(id)),
+  bitlyAccount: () => jsonFetch('/api/bitly/account'),
+  clickupTest: () => jsonFetch('/api/clickup/test'),
 };
