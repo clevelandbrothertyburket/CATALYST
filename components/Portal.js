@@ -522,7 +522,15 @@ function DecideModal({ req, onClose, onDone }) {
   const [busy, setBusy] = useState(false);
   async function act(decision) {
     setBusy(true);
-    try { await api.decide(req.id, decision, note); toast(decision === 'approve' ? 'Approved — code is now active' : decision === 'changes' ? 'Changes requested' : 'Rejected'); onDone(); }
+    try {
+      const r = await api.decide(req.id, decision, note);
+      if (decision === 'approve') {
+        if (r && r.clickup && r.clickup.ok) toast('Approved — ClickUp task created');
+        else if (r && r.clickup && r.clickup.error) toastErr('Approved, but ClickUp failed: ' + r.clickup.error);
+        else toast('Approved — code is now active');
+      } else toast(decision === 'changes' ? 'Changes requested' : 'Rejected');
+      onDone();
+    }
     catch (e) { toastErr(e.message); setBusy(false); }
   }
   const p = req.proposed;
