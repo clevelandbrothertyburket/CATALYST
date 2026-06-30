@@ -1,5 +1,5 @@
 import { requireUser } from '@/lib/auth';
-import { bitlyConfigured, listAccountLinks } from '@/lib/bitly';
+import { bitlyConfigured, listAccountLinks, listQrCodes } from '@/lib/bitly';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,8 +12,8 @@ export async function GET(req) {
 
   const size = Math.min(Number(new URL(req.url).searchParams.get('size')) || 50, 100);
   try {
-    const data = await listAccountLinks({ size });
-    return Response.json({ configured: true, ...data });
+    const [data, qrCodes] = await Promise.all([listAccountLinks({ size }), listQrCodes()]);
+    return Response.json({ configured: true, ...data, qrCodes });
   } catch (e) {
     return Response.json({ configured: true, error: String(e && e.message || e) }, { status: 200 });
   }

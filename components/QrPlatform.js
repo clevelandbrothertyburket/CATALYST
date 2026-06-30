@@ -56,43 +56,104 @@ const iconBtn = { cursor: 'pointer', width: 30, height: 30, borderRadius: 8, fle
 const can = (u, r) => { const RANK = { viewer: 0, user: 1, approver: 2, admin: 3 }; return u && (RANK[u.role] ?? -1) >= (RANK[r] ?? 99); };
 
 const bcols = '1.3fr 1.6fr 90px 110px';
+const fmtD = (s) => { try { return new Date(s).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); } catch { return ''; } };
+
 function BitlyAccount({ data, loading, q, setQ, onReload }) {
+  const [sub, setSub] = useState('links');
+  const [detailFor, setDetailFor] = useState(null);
+  const [detail, setDetail] = useState(null);
+
+  async function openDetail(l) {
+    setDetailFor(l); setDetail(null);
+    try { setDetail(await api.bitlyLink(l.id)); } catch (e) { toastErr(e.message); }
+  }
+
   if (loading && !data) return <div style={{ ...card, padding: 44, textAlign: 'center', color: C.fog2, fontSize: 13 }}>Loading your Bitly account…</div>;
   if (data && data.configured === false) return <div style={{ ...card, padding: 30, color: C.fog, fontSize: 13.5, lineHeight: 1.6 }}>Bitly isn’t connected. Add a <span className="mono" style={{ color: C.white }}>BITLY_TOKEN</span> in the project settings to pull your account in here.</div>;
   if (data && data.error) return <div style={{ ...card, padding: 30, color: '#FFB020', fontSize: 13.5 }}>Couldn’t reach Bitly: {data.error}</div>;
+
   const links = (data && data.links) || [];
+  const qrCodes = (data && data.qrCodes) || [];
   const filtered = !q ? links : links.filter((l) => `${l.link} ${l.title || ''} ${l.long_url}`.toLowerCase().includes(q.toLowerCase()));
-  const fmt = (s) => { try { return new Date(s).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); } catch { return ''; } };
+  // QR view: prefer Bitly's dedicated QR codes; fall back to showing every link as a scannable QR.
+  const qrItems = (qrCodes.length ? qrCodes.map((q2) => ({ id: q2.link || q2.id, title: q2.title, long_url: q2.long_url })) : links)
+    .filter((x) => !q || `${x.id} ${x.title || ''} ${x.long_url || ''}`.toLowerCase().includes(q.toLowerCase()));
+
+  const subBtn = (k, label, n) => (
+    <button onClick={() => setSub(k)} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: sub === k ? ACCENT_SOFT : C.ink3, color: sub === k ? C.white : C.fog }}>{label} <span style={{ color: C.fog2 }}>{n}</span></button>
+  );
+
   return (
     <div>
       <div style={{ display: 'flex', gap: 13, marginBottom: 18, flexWrap: 'wrap' }}>
         <div style={{ ...card, padding: '16px 20px', flex: 1, minWidth: 150 }}><div style={{ fontSize: 12, color: C.fog, fontWeight: 600, marginBottom: 8 }}>Bitlinks in account</div><div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 32, lineHeight: 1 }}>{data ? data.count : 0}</div></div>
         <div style={{ ...card, padding: '16px 20px', flex: 1, minWidth: 150 }}><div style={{ fontSize: 12, color: C.fog, fontWeight: 600, marginBottom: 8 }}>Total Bitly clicks</div><div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 32, lineHeight: 1, color: ACCENT }}>{data ? data.totalClicks : 0}</div></div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
-        <h3 style={{ fontFamily: 'Archivo', fontWeight: 700, fontSize: 15 }}>Everything in Bitly</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 7 }}>{subBtn('links', 'Links', links.length)}{subBtn('qr', 'QR Codes', qrCodes.length || links.length)}</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <div style={{ width: 260 }}><Search value={q} onChange={setQ} placeholder="Search Bitly links…" /></div>
+          <div style={{ width: 260 }}><Search value={q} onChange={setQ} placeholder={sub === 'qr' ? 'Search QR codes…' : 'Search Bitly links…'} /></div>
           <button onClick={onReload} title="Reload from Bitly" style={iconBtn}>↻</button>
         </div>
       </div>
-      <div style={{ ...card, overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: bcols, gap: 12, padding: '11px 18px', borderBottom: `1px solid ${C.line}`, background: C.ink3, fontSize: 10.5, letterSpacing: '.08em', textTransform: 'uppercase', color: C.fog2, fontWeight: 600 }}>
-          <span>Bitlink</span><span>Destination</span><span style={{ textAlign: 'right' }}>Clicks</span><span style={{ textAlign: 'right' }}>Created</span>
-        </div>
-        {filtered.length === 0 ? <div style={{ padding: 44, textAlign: 'center', color: C.fog2, fontSize: 13 }}>{links.length === 0 ? 'No Bitlinks found in this account yet.' : 'No links match your search.'}</div>
-          : <div>{filtered.map((l) => (
-            <div key={l.id} style={{ display: 'grid', gridTemplateColumns: bcols, gap: 12, alignItems: 'center', padding: '12px 18px', borderBottom: `1px solid ${C.line}` }}>
-              <div style={{ minWidth: 0 }}>
-                <a href={`https://${l.id}`} target="_blank" rel="noreferrer" className="mono" style={{ fontSize: 13, fontWeight: 600, color: ACCENT, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.id}</a>
-                {l.title && <span style={{ fontSize: 11.5, color: C.fog2 }}>{l.title}</span>}
+
+      {sub === 'links' ? (
+        <div style={{ ...card, overflow: 'hidden' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: bcols, gap: 12, padding: '11px 18px', borderBottom: `1px solid ${C.line}`, background: C.ink3, fontSize: 10.5, letterSpacing: '.08em', textTransform: 'uppercase', color: C.fog2, fontWeight: 600 }}>
+            <span>Bitlink</span><span>Destination</span><span style={{ textAlign: 'right' }}>Clicks</span><span style={{ textAlign: 'right' }}>Created</span>
+          </div>
+          {filtered.length === 0 ? <div style={{ padding: 44, textAlign: 'center', color: C.fog2, fontSize: 13 }}>{links.length === 0 ? 'No Bitlinks found in this account yet.' : 'No links match your search.'}</div>
+            : <div>{filtered.map((l) => (
+              <div key={l.id} onClick={() => openDetail(l)} style={{ display: 'grid', gridTemplateColumns: bcols, gap: 12, alignItems: 'center', padding: '12px 18px', borderBottom: `1px solid ${C.line}`, cursor: 'pointer' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = C.ink3)} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                <div style={{ minWidth: 0 }}>
+                  <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: ACCENT, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.id}</span>
+                  {l.title && <span style={{ fontSize: 11.5, color: C.fog2 }}>{l.title}</span>}
+                </div>
+                <span className="mono" style={{ fontSize: 11, color: C.fog, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{l.long_url}</span>
+                <div style={{ textAlign: 'right', fontFamily: 'Archivo', fontWeight: 800, fontSize: 16, color: l.clicks > 0 ? ACCENT : C.fog2 }}>{l.clicks == null ? '—' : l.clicks}</div>
+                <div style={{ textAlign: 'right', fontSize: 11.5, color: C.fog2 }}>{fmtD(l.created_at)}</div>
               </div>
-              <a href={l.long_url} target="_blank" rel="noreferrer" className="mono" style={{ fontSize: 11, color: C.fog, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, textDecoration: 'none' }}>{l.long_url}</a>
-              <div style={{ textAlign: 'right', fontFamily: 'Archivo', fontWeight: 800, fontSize: 16, color: l.clicks > 0 ? ACCENT : C.fog2 }}>{l.clicks == null ? '—' : l.clicks}</div>
-              <div style={{ textAlign: 'right', fontSize: 11.5, color: C.fog2 }}>{fmt(l.created_at)}</div>
-            </div>
-          ))}</div>}
-      </div>
+            ))}</div>}
+        </div>
+      ) : (
+        <div>
+          {!qrCodes.length && <div style={{ fontSize: 12, color: C.fog2, marginBottom: 12 }}>Showing a scannable QR for every Bitlink in the account. Click any card to open its analytics.</div>}
+          {qrItems.length === 0 ? <div style={{ ...card, padding: 44, textAlign: 'center', color: C.fog2, fontSize: 13 }}>No QR codes to show.</div>
+            : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 14 }}>
+              {qrItems.map((x) => (
+                <div key={x.id} onClick={() => openDetail(x)} style={{ ...card, padding: 16, cursor: 'pointer', textAlign: 'center' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = ACCENT)} onMouseLeave={(e) => (e.currentTarget.style.borderColor = C.line2)}>
+                  <div style={{ background: C.white, borderRadius: 10, padding: 10, display: 'inline-block', marginBottom: 10 }}><QR value={`https://${x.id}`} size={120} /></div>
+                  <div className="mono" style={{ fontSize: 12, fontWeight: 600, color: ACCENT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.id}</div>
+                  {x.title && <div style={{ fontSize: 11, color: C.fog2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.title}</div>}
+                </div>
+              ))}
+            </div>}
+        </div>
+      )}
+
+      {detailFor && (
+        <Modal title={detailFor.id} sub={detailFor.long_url || detailFor.title} onClose={() => setDetailFor(null)} width={540}>
+          {!detail ? <div style={{ padding: 30, textAlign: 'center', color: C.fog2, fontSize: 13 }}>Loading analytics…</div>
+            : detail.error ? <div style={{ padding: 20, color: '#FFB020', fontSize: 13 }}>{detail.error}</div>
+            : <div>
+              <div style={{ display: 'flex', gap: 16, marginBottom: 18, alignItems: 'flex-start' }}>
+                <div style={{ background: C.white, borderRadius: 10, padding: 10, flexShrink: 0 }}><QR value={detail.bitlyUrl || `https://${detailFor.id}`} size={120} /></div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ ...card, padding: '13px 16px', background: C.ink3, marginBottom: 10 }}><div style={{ fontSize: 11, color: C.fog2, marginBottom: 4 }}>Total Bitly clicks</div><div style={{ fontFamily: 'Archivo', fontWeight: 800, fontSize: 27, color: ACCENT }}>{detail.total}</div></div>
+                  <a href={detail.bitlyUrl || `https://${detailFor.id}`} target="_blank" rel="noreferrer" className="mono" style={{ fontSize: 12, color: ACCENT, textDecoration: 'none' }}>{detailFor.id} ↗</a>
+                </div>
+              </div>
+              <div style={{ ...statLabel }}>Clicks · last 30 days</div>
+              <Spark points={(detail.series || []).map((p) => ({ value: p.clicks }))} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 28px', marginTop: 20 }}>
+                <div><div style={statLabel}>Country</div><Bars rows={detail.byCountry} /></div>
+                <div><div style={statLabel}>Referrer</div><Bars rows={detail.byReferrer} /></div>
+              </div>
+            </div>}
+        </Modal>
+      )}
     </div>
   );
 }

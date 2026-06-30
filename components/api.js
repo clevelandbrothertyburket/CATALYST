@@ -21,6 +21,7 @@ export const api = {
 
   codes: (params = '') => jsonFetch('/api/codes' + params),
   changeStatus: (id, to) => jsonFetch(`/api/codes/${id}/status`, { method: 'POST', body: JSON.stringify({ to }) }),
+  deleteCode: (id) => jsonFetch(`/api/codes/${id}`, { method: 'DELETE' }),
 
   requests: (params = '') => jsonFetch('/api/requests' + params),
   createRequest: (body) => jsonFetch('/api/requests', { method: 'POST', body: JSON.stringify(body) }),
@@ -41,5 +42,6 @@ export const api = {
   hubStats: (id) => jsonFetch('/api/hub/stats?id=' + encodeURIComponent(id)),
   bitlyStats: (id) => jsonFetch('/api/hub/bitly?id=' + encodeURIComponent(id)),
   bitlyAccount: () => jsonFetch('/api/bitly/account'),
+  bitlyLink: (bitlink) => jsonFetch('/api/bitly/link?bitlink=' + encodeURIComponent(bitlink)),
   clickupTest: () => jsonFetch('/api/clickup/test'),
 };

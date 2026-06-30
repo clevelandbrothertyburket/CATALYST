@@ -66,6 +66,7 @@ export function Btn({ children, onClick, variant = 'primary', disabled, style, t
 
 const STATUS_COLORS = {
   active: [C.good, 'rgba(52,199,89,.14)'],
+  paused: [C.warn, 'rgba(255,176,32,.16)'],
   pending: [C.warn, 'rgba(255,176,32,.14)'],
   deprecated: ['#c9a227', 'rgba(255,205,17,.12)'],
   retired: [C.fog2, 'rgba(110,110,120,.18)'],

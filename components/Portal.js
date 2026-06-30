@@ -114,8 +114,7 @@ function StatCard({ label, value, sub, icon, accent, onClick, delay = 0 }) {
 }
 
 const STATUS_VIZ = [
-  ['active', '#34C759'], ['pending', '#FFCD11'], ['deprecated', '#C99700'],
-  ['retired', '#8A8A93'], ['rejected', '#D99A5B'], ['archived', '#5B5B66'],
+  ['active', '#34C759'], ['paused', '#FFCD11'],
 ];
 function Donut({ data, size = 132, stroke = 15 }) {
   const total = data.reduce((s, d) => s + d.value, 0) || 1;
@@ -322,9 +321,8 @@ function Dashboard({ user, go, data }) {
 
 /* ----------------- CAMPAIGN CODES + LIFECYCLE ----------------- */
 const LIFECYCLE = {
-  pending: ['active', 'rejected'], active: ['deprecated', 'retired', 'archived'],
-  deprecated: ['active', 'retired', 'archived'], retired: ['archived', 'active'],
-  rejected: ['pending'], archived: ['active'],
+  active: ['paused'],
+  paused: ['active'],
 };
 function CampaignCodes({ user, data, reload }) {
   const [q, setQ] = useState('');
@@ -332,6 +330,8 @@ function CampaignCodes({ user, data, reload }) {
   const [statusFilter, setStatusFilter] = useState('');
   const [showReq, setShowReq] = useState(false);
   const [menuFor, setMenuFor] = useState(null);
+  const [confirmRemove, setConfirmRemove] = useState(null);
+  const [removing, setRemoving] = useState(false);
   const isApprover = can(user, 'approver');
 
   const filtered = useMemo(() => data.codes.filter((c) => {
@@ -343,8 +343,14 @@ function CampaignCodes({ user, data, reload }) {
 
   async function transition(id, to) {
     setMenuFor(null);
-    try { await api.changeStatus(id, to); toast(`Moved to ${to}`); reload(); }
+    try { await api.changeStatus(id, to); toast(to === 'paused' ? 'Code paused' : 'Code activated'); reload(); }
     catch (e) { toastErr(e.message); }
+  }
+  async function doRemove() {
+    if (!confirmRemove) return;
+    setRemoving(true);
+    try { await api.deleteCode(confirmRemove.id); toast(`Removed ${confirmRemove.code}`); setConfirmRemove(null); reload(); }
+    catch (e) { toastErr(e.message); } finally { setRemoving(false); }
   }
   function exportCsv() {
     const head = ['Code', 'Campaign', 'Department', 'Business Unit', 'Initiative', 'Status', 'Created By'];
@@ -369,7 +375,7 @@ function CampaignCodes({ user, data, reload }) {
         </select>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ ...inputStyle, width: 'auto', minWidth: 150 }}>
           <option value="">All statuses</option>
-          {['active', 'pending', 'deprecated', 'retired', 'archived', 'rejected'].map((s) => <option key={s} value={s}>{s}</option>)}
+          {['active', 'paused'].map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
       <div style={{ ...card, overflow: 'visible' }}>
@@ -388,18 +394,22 @@ function CampaignCodes({ user, data, reload }) {
                 <div style={{ color: C.fog, fontSize: 12.5 }}>{c.department}</div>
                 <div><StatusBadge status={c.status} /></div>
                 <div>
-                  {isApprover && (LIFECYCLE[c.status] || []).length > 0 && (
+                  {isApprover && (
                     <button onClick={() => setMenuFor(menuFor === c.id ? null : c.id)} style={{ background: 'none', border: 'none', color: C.fog, cursor: 'pointer', fontSize: 17, padding: 4 }}>⋯</button>
                   )}
                   {menuFor === c.id && (
-                    <div style={{ position: 'absolute', right: 14, top: 42, zIndex: 20, ...card, padding: 6, minWidth: 150, boxShadow: '0 12px 30px rgba(0,0,0,.5)' }}>
-                      <div style={{ fontSize: 10.5, color: C.fog2, padding: '4px 8px', textTransform: 'uppercase', letterSpacing: '.05em' }}>Move to</div>
-                      {LIFECYCLE[c.status].map((to) => (
+                    <div style={{ position: 'absolute', right: 14, top: 42, zIndex: 20, ...card, padding: 6, minWidth: 160, boxShadow: '0 12px 30px rgba(0,0,0,.5)' }}>
+                      {(LIFECYCLE[c.status] || []).map((to) => (
                         <button key={to} onClick={() => transition(c.id, to)} style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', color: C.white, fontSize: 12.5, padding: '8px 8px', borderRadius: 7, cursor: 'pointer' }}
                           onMouseEnter={(e) => (e.currentTarget.style.background = C.ink3)} onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
-                          {to}
+                          {to === 'paused' ? 'Pause' : to === 'active' ? 'Activate' : to}
                         </button>
                       ))}
+                      <div style={{ height: 1, background: C.line, margin: '4px 6px' }} />
+                      <button onClick={() => { setMenuFor(null); setConfirmRemove(c); }} style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', color: '#FF6B6B', fontSize: 12.5, fontWeight: 600, padding: '8px 8px', borderRadius: 7, cursor: 'pointer' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,107,107,.1)')} onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
+                        Remove
+                      </button>
                     </div>
                   )}
                 </div>
@@ -408,6 +418,18 @@ function CampaignCodes({ user, data, reload }) {
         </div>
       </div>
       {showReq && <RequestCodeModal user={user} taxonomy={data.taxonomy} existing={data.codes} onClose={() => setShowReq(false)} onDone={() => { setShowReq(false); reload(); }} />}
+      {confirmRemove && (
+        <Modal title="Remove campaign code" sub="This permanently deletes the code from the system." onClose={() => setConfirmRemove(null)} width={440}>
+          <p style={{ fontSize: 13.5, color: C.fog, lineHeight: 1.6, marginBottom: 18 }}>
+            Permanently remove <span className="mono" style={{ color: C.white }}>{confirmRemove.code}</span>
+            {confirmRemove.camp_name ? <> — {confirmRemove.camp_name}</> : null}? This can’t be undone, and any links already built with this code will keep their UTM tag but the code won’t appear in the registry.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 9 }}>
+            <Btn variant="ghost" onClick={() => setConfirmRemove(null)}>Cancel</Btn>
+            <Btn variant="danger" onClick={doRemove} disabled={removing}>{removing ? 'Removing…' : 'Remove for good'}</Btn>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -639,7 +661,7 @@ function CodePicker({ codes, value, onChange }) {
 }
 
 function UtmLinks({ user, data, reload }) {
-  const usable = data.codes.filter((c) => c.status === 'active' || c.status === 'deprecated');
+  const usable = data.codes.filter((c) => c.status === 'active');
   const [codeId, setCodeId] = useState('');
   const [content, setContent] = useState(''); const [cc, setCc] = useState('');
   const [medium, setMedium] = useState(''); const [mc, setMc] = useState('');
