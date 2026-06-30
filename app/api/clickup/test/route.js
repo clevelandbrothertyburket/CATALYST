@@ -35,5 +35,14 @@ export async function GET(req) {
     catch (e) { out.discoverError = String(e && e.message || e); }
   }
 
+  // ?create=1 — actually create a test task (sets Initiative + Business Unit) and
+  // return ClickUp's exact response. The definitive write-path check.
+  if (new URL(req.url).searchParams.get('create') === '1') {
+    try {
+      const t = await createCodeRequestTask({ code: 'm-g-ps-diag', campName: 'Diagnostic Test (safe to delete)', businessUnit: 'Construction Division', initiative: 'Product Support', requestedBy: 'Catalyst diagnostic', appUrl: 'https://catalyst-rust-two.vercel.app' });
+      out.createdTask = t;
+    } catch (e) { out.createError = String(e && e.message || e); out.createStatus = e && e.status; }
+  }
+
   return Response.json(out);
 }
