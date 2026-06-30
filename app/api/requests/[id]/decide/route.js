@@ -16,7 +16,7 @@ export async function POST(req, { params }) {
     if (!result.error && clickupConfigured()) {
       try {
         const appUrl = process.env.APP_URL || new URL(req.url).origin;
-        const t = await createCodeRequestTask({ code: result.code, campName: result.campName, businessUnit: result.businessUnit, requestedBy: result.requestedBy, appUrl });
+        const t = await createCodeRequestTask({ code: result.code, campName: result.campName, businessUnit: result.businessUnit, initiative: result.initiative, requestedBy: result.requestedBy, appUrl });
         result.clickup = { ok: true, url: t.url };
       } catch (e) { result.clickup = { ok: false, error: String(e.message || e) }; }
     }
